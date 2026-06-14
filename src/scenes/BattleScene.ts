@@ -1,15 +1,14 @@
 import Phaser from 'phaser';
 import { GameState } from '../core/GameState';
 import { EventBus } from '../core/EventBus';
-import { DeckSystem } from '../systems/DeckSystem';
 import { SaveSystem } from '../systems/SaveSystem';
-import type { ICardData, ICharacter } from '../types';
+import { BattleManager } from '../managers/BattleManager'; // 💡 로직 매니저만 호출합니다
+import type { ICardData } from '../types';
 
 export default class BattleScene extends Phaser.Scene {
     playerSprite!: Phaser.GameObjects.Rectangle;
     playerHpText!: Phaser.GameObjects.Text;
     
-    // UI 컨테이너들
     manaContainer!: Phaser.GameObjects.Container;
     manaText!: Phaser.GameObjects.Text;
     blockContainer!: Phaser.GameObjects.Container;
@@ -27,36 +26,30 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     create() {
-        const width = this.cameras.main.width;   // 2360
-        const height = this.cameras.main.height; // 1640
-
         this.createActors();
+        this.createEndTurnButton(this.cameras.main.width - 200, this.cameras.main.height / 1.2);
         
-        // 💡 요청하신 대로 턴 종료 버튼의 높이를 height / 1.2 로 적용하고 크기를 키웠습니다.
-        this.createEndTurnButton(width - 200, height / 1.2);
-        
-        // 중앙 상단 턴 알림 텍스트 크기 확대
-        this.turnText = this.add.text(width / 2, 100, '전투 시작!', { 
+        this.turnText = this.add.text(this.cameras.main.width / 2, 100, '', { 
             fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
         
         EventBus.on('hand-updated', this.renderHand, this);
 
-        DeckSystem.initializeBattleDeck();
-        this.startPlayerTurn();
+        // 💡 Manager를 통해 전투 로직 시작 (Scene은 그리기만 시작)
+        BattleManager.startBattle();
+        this.updateUI();
+        this.turnText.setText('플레이어 턴');
     }
 
     createActors() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // 플레이어 크기 및 텍스트 2배 확대
         this.playerSprite = this.add.rectangle(400, height / 2, 200, 300, 0x3a7bd5);
         this.playerHpText = this.add.text(400, height / 2 + 200, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
 
-        // 💡 플레이어 마나 (크기 및 폰트 2배 확대)
         const manaBg = this.add.circle(0, 0, 80, 0xd8458b);
         manaBg.setStrokeStyle(6, 0xffffff);
         this.manaText = this.add.text(0, 0, '', { 
@@ -64,7 +57,6 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.manaContainer = this.add.container(250, height - 250, [manaBg, this.manaText]);
 
-        // 💡 플레이어 방어도 (크기 및 폰트 확대)
         const blockBg = this.add.rectangle(0, 0, 50, 50, 0x00aaff).setAngle(45);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '28px', color: '#fff', fontStyle: 'bold', padding: { top: 5, bottom: 5 } 
@@ -72,7 +64,6 @@ export default class BattleScene extends Phaser.Scene {
         this.blockContainer = this.add.container(300, height / 2 + 200, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        // 적 크기 및 텍스트 확대
         this.enemySprite = this.add.rectangle(width - 400, height / 2, 240, 320, 0xd53a3a);
         this.enemyHpText = this.add.text(width - 400, height / 2 + 220, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
@@ -90,7 +81,6 @@ export default class BattleScene extends Phaser.Scene {
         const height = this.cameras.main.height;
         const handSize = GameState.hand.length;
         
-        // 카드 간격 및 부채꼴 처짐 정도 2배 확대
         const cardSpacing = 220; 
         const startX = (width / 2) - ((handSize - 1) * cardSpacing) / 2;
 
@@ -105,7 +95,6 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number) {
-        // 카드 자체 크기도 해상도에 맞게 큼직하게 변경
         const cardWidth = 260;
         const cardHeight = 380;
         
@@ -137,7 +126,6 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
-            // 호버 시 위로 올라가는 간격 확대
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
         });
 
@@ -163,7 +151,6 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             bg.setStrokeStyle(6, 0xffffff);
 
-            // 사용 인식 Y좌표 임계치 조정
             if (cardContainer.y < this.cameras.main.height - 450) {
                 this.playCard(cardData, handIndex);
             } else {
@@ -175,7 +162,6 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     createEndTurnButton(x: number, y: number) {
-        // 버튼 크기 및 폰트 2배 확대
         const btnBg = this.add.rectangle(x, y, 220, 80, 0x555555).setInteractive();
         this.add.text(x, y, '턴 종료', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
@@ -190,113 +176,90 @@ export default class BattleScene extends Phaser.Scene {
         btnBg.on('pointerup', () => btnBg.fillColor = 0x555555);
     }
     
+    // 💡 1. 카드 사용 (Manager의 Result를 받아 시각 효과만 처리)
     playCard(cardData: ICardData, handIndex: number) {
-        if (GameState.player.mana! < cardData.cost) {
-            this.showFloatingText(this.cameras.main.width / 2, this.cameras.main.height / 2, "마나 부족!", 0xff0000);
+        const result = BattleManager.playCard(cardData, handIndex);
+
+        if (!result.success) {
+            this.showFloatingText(this.cameras.main.width / 2, this.cameras.main.height / 2, result.reason || "사용 불가", 0xff0000);
             EventBus.emit('hand-updated'); 
             return;
         }
 
-        GameState.player.mana! -= cardData.cost;
-
-        if (cardData.type === 'ATTACK') {
-            this.applyDamage(GameState.enemy, cardData.value);
-            this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${cardData.value}`, 0xff0000);
+        if (result.damageDealt > 0) {
+            this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
             this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
-        } 
-        else if (cardData.type === 'DEFEND') {
-            GameState.player.block += cardData.value;
-            this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `+${cardData.value} 방어도`, 0x00aaff);
+        }
+        if (result.blockGained > 0) {
+            this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `+${result.blockGained} 방어도`, 0x00aaff);
         }
 
-        DeckSystem.discardCard(handIndex); 
         this.updateUI();
-        this.checkGameOver();
+        this.handleWinLose(); 
     }
 
+    // 💡 2. 턴 종료 연출
     endPlayerTurn() {
-        GameState.turn = 'animating'; 
+        BattleManager.endPlayerTurn(); 
         this.turnText.setText('적 턴...');
-        DeckSystem.discardHand(); 
         
         this.time.delayedCall(1000, () => {
             this.processEnemyTurn();
         });
     }
 
+    // 💡 3. 적 턴 연출 (Manager의 Result를 받아 화면에 그리기)
     processEnemyTurn() {
-        const intent = GameState.enemy.intent!;
+        const result = BattleManager.processEnemyTurn();
         
-        if (intent.type === 'attack') {
-            this.tweens.add({ targets: this.enemySprite, x: this.enemySprite.x - 30, yoyo: true, duration: 100 });
-            this.applyDamage(GameState.player, intent.value);
-            this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `-${intent.value}`, 0xff0000);
+        this.tweens.add({ targets: this.enemySprite, x: this.enemySprite.x - 30, yoyo: true, duration: 100 });
+        
+        if (result.damageDealt > 0) {
+            this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `-${result.damageDealt}`, 0xff0000);
         }
 
         this.updateUI();
 
-        if (!this.checkGameOver()) {
+        if (!this.handleWinLose()) {
             this.time.delayedCall(1000, () => {
-                this.startPlayerTurn();
+                BattleManager.startNextTurn();
+                this.turnText.setText('플레이어 턴');
+                this.updateUI();
             });
         }
     }
 
-    startPlayerTurn() {
-        GameState.player.mana = GameState.player.maxMana; 
-        GameState.player.block = 0; 
-        GameState.enemy.block = 0; 
-        GameState.enemy.intent = { type: 'attack', value: Math.floor(Math.random() * 5) + 5 };
+    // 💡 4. 승패 연출 및 화면 전환
+    handleWinLose(): boolean {
+        const status = BattleManager.checkWinLose();
 
-        DeckSystem.drawCards(5); 
-
-        GameState.turn = 'player';
-        this.turnText.setText('플레이어 턴');
-        this.updateUI();
-    }
-
-    applyDamage(target: ICharacter, amount: number) {
-        if (target.block > 0) {
-            const blockDamage = Math.min(target.block, amount);
-            target.block -= blockDamage;
-            amount -= blockDamage;
-        }
-        if (amount > 0) {
-            target.hp -= amount;
-        }
-        if (target.hp < 0) target.hp = 0;
-    }
-
-    checkGameOver() {
-        // 💡 1. 적(Enemy) 체력이 0 이하일 때 (전투 승리 -> 보상 화면으로 이동)
-        if (GameState.enemy.hp <= 0) {
+        if (status === 'win') {
             GameState.turn = 'animating';
             this.turnText.setText('전투 승리!');
             this.enemySprite.setAlpha(0.2);
             
             this.time.delayedCall(1000, () => {
-                GameState.floor += 1; // 층수 증가
-                GameState.enemy.hp = GameState.enemy.maxHp; // 다음 층을 위해 적 체력 회복
-                this.scene.start('RewardScene'); // 보상 화면으로 전환
+                GameState.floor += 1; 
+                GameState.enemy.hp = GameState.enemy.maxHp; 
+                this.scene.start('RewardScene'); 
             });
             return true;
         }
-
-        // 💡 2. 플레이어 체력이 0 이하일 때 (게임 오버 -> 타이틀 화면으로 이동)
-        if (GameState.player.hp <= 0) {
+        
+        if (status === 'lose') {
             GameState.turn = 'animating';
             this.turnText.setText('게임 오버');
             this.playerSprite.setAlpha(0.2);
             
-            SaveSystem.clearSave(); // 세이브 날리기
+            SaveSystem.clearSave(); 
             this.time.delayedCall(2000, () => {
                 GameState.masterDeck = []; 
-                this.scene.start('MenuScene'); // 사망 시 타이틀 화면으로!
+                this.scene.start('MenuScene'); 
             });
             return true;
         }
 
-        return false; // 둘 다 0이 아니면 게임 계속 진행
+        return false;
     }
 
     updateUI() {
@@ -316,7 +279,6 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     showFloatingText(x: number, y: number, message: string, color: number) {
-        // 데미지 텍스트 사이즈도 확대
         const text = this.add.text(x, y, message, { 
             fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 6, padding: { top: 12, bottom: 12 } 
         }).setOrigin(0.5);
