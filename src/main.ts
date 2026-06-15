@@ -1,3 +1,4 @@
+import PreloadScene from './scenes/PreloadScene'; // 💡 추가
 import Phaser from 'phaser';
 import MenuScene from './scenes/MenuScene'; // 💡 메인 메뉴 추가
 import BattleScene from './scenes/BattleScene';
@@ -18,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
     } as any,
     
     // 💡 scene 배열의 맨 앞(가장 먼저 실행됨)에 MenuScene을 배치합니다!
-    scene: [MenuScene, MapScene, BattleScene, RewardScene] 
+    scene: [PreloadScene, MenuScene, MapScene, BattleScene, RewardScene] 
 };
 
 new Phaser.Game(config);

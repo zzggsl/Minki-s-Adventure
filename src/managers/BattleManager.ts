@@ -18,6 +18,9 @@ export interface EnemyTurnResult {
 export class BattleManager {
     // 전투 시작
     static startBattle() {
+        // 💡 누락되었던 핵심 코드 추가! (영구 덱을 복사해 전투 덱을 만듭니다)
+        DeckSystem.initializeBattleDeck(); 
+        
         GameState.player.mana = GameState.player.maxMana;
         GameState.player.block = 0;
         GameState.enemy.block = 0;

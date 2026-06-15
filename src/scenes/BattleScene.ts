@@ -6,7 +6,7 @@ import { BattleManager } from '../managers/BattleManager'; // 💡 로직 매니
 import type { ICardData } from '../types';
 
 export default class BattleScene extends Phaser.Scene {
-    playerSprite!: Phaser.GameObjects.Rectangle;
+    playerSprite!: Phaser.GameObjects.Sprite; // 💡 Rectangle에서 Sprite로 변경
     playerHpText!: Phaser.GameObjects.Text;
     
     manaContainer!: Phaser.GameObjects.Container;
@@ -14,7 +14,7 @@ export default class BattleScene extends Phaser.Scene {
     blockContainer!: Phaser.GameObjects.Container;
     blockText!: Phaser.GameObjects.Text;
     
-    enemySprite!: Phaser.GameObjects.Rectangle;
+    enemySprite!: Phaser.GameObjects.Sprite;  // 💡 Rectangle에서 Sprite로 변경
     enemyHpText!: Phaser.GameObjects.Text;
     enemyIntentText!: Phaser.GameObjects.Text;
     
@@ -45,18 +45,23 @@ export default class BattleScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        this.playerSprite = this.add.rectangle(400, height / 2, 200, 300, 0x3a7bd5);
+        // 💡 플레이어 스프라이트 교체
+        this.playerSprite = this.add.sprite(400, height / 2, 'player');
+        // 이미지가 너무 크거나 작으면 this.playerSprite.setScale(0.5) 처럼 조절할 수 있습니다.
+        
         this.playerHpText = this.add.text(400, height / 2 + 200, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
 
-        const manaBg = this.add.circle(0, 0, 80, 0xd8458b);
-        manaBg.setStrokeStyle(6, 0xffffff);
+        // 💡 마나 UI 교체 (분홍색 원 대신 energy.png 사용)
+        const manaBg = this.add.sprite(0, 0, 'energy');
+        
         this.manaText = this.add.text(0, 0, '', { 
             fontSize: '45px', color: '#fff', fontStyle: 'bold', padding: { top: 5, bottom: 5 } 
         }).setOrigin(0.5);
         this.manaContainer = this.add.container(250, height - 250, [manaBg, this.manaText]);
 
+        // 방어도 UI (일단 마름모 유지, 나중에 방패 이미지로 교체 가능)
         const blockBg = this.add.rectangle(0, 0, 50, 50, 0x00aaff).setAngle(45);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '28px', color: '#fff', fontStyle: 'bold', padding: { top: 5, bottom: 5 } 
@@ -64,7 +69,9 @@ export default class BattleScene extends Phaser.Scene {
         this.blockContainer = this.add.container(300, height / 2 + 200, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        this.enemySprite = this.add.rectangle(width - 400, height / 2, 240, 320, 0xd53a3a);
+        // 💡 적 스프라이트 교체
+        this.enemySprite = this.add.sprite(width - 400, height / 2, 'enemy_gunha');
+        
         this.enemyHpText = this.add.text(width - 400, height / 2 + 220, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
