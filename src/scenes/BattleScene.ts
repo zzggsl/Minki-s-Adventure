@@ -2,11 +2,11 @@ import Phaser from 'phaser';
 import { GameState } from '../core/GameState';
 import { EventBus } from '../core/EventBus';
 import { SaveSystem } from '../systems/SaveSystem';
-import { BattleManager } from '../managers/BattleManager'; // 💡 로직 매니저만 호출합니다
+import { BattleManager } from '../managers/BattleManager';
 import type { ICardData } from '../types';
 
 export default class BattleScene extends Phaser.Scene {
-    playerSprite!: Phaser.GameObjects.Sprite; // 💡 Rectangle에서 Sprite로 변경
+    playerSprite!: Phaser.GameObjects.Sprite;
     playerHpText!: Phaser.GameObjects.Text;
     
     manaContainer!: Phaser.GameObjects.Container;
@@ -14,7 +14,7 @@ export default class BattleScene extends Phaser.Scene {
     blockContainer!: Phaser.GameObjects.Container;
     blockText!: Phaser.GameObjects.Text;
     
-    enemySprite!: Phaser.GameObjects.Sprite;  // 💡 Rectangle에서 Sprite로 변경
+    enemySprite!: Phaser.GameObjects.Sprite;
     enemyHpText!: Phaser.GameObjects.Text;
     enemyIntentText!: Phaser.GameObjects.Text;
     
@@ -26,16 +26,18 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     create() {
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+
         this.createActors();
-        this.createEndTurnButton(this.cameras.main.width - 200, this.cameras.main.height / 1.2);
+        this.createEndTurnButton(width - 200, height / 1.2);
         
-        this.turnText = this.add.text(this.cameras.main.width / 2, 100, '', { 
+        this.turnText = this.add.text(width / 2, 100, '', { 
             fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
         
         EventBus.on('hand-updated', this.renderHand, this);
 
-        // 💡 Manager를 통해 전투 로직 시작 (Scene은 그리기만 시작)
         BattleManager.startBattle();
         this.updateUI();
         this.turnText.setText('플레이어 턴');
@@ -45,37 +47,48 @@ export default class BattleScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // 💡 플레이어 스프라이트 교체
-        this.playerSprite = this.add.sprite(400, height / 2, 'player');
-        // 이미지가 너무 크거나 작으면 this.playerSprite.setScale(0.5) 처럼 조절할 수 있습니다.
+        // 💡 1. 플레이어 스프라이트 배치 및 크기 축소 (임의 조정: 0.4배)
+        this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player');
+        this.playerSprite.setScale(0.4); 
         
-        this.playerHpText = this.add.text(400, height / 2 + 200, '', { 
+        this.playerHpText = this.add.text(width * 0.2, height * 0.5 + 250, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
 
-        // 💡 마나 UI 교체 (분홍색 원 대신 energy.png 사용)
+        // 💡 2. 에너지 보석 UI 생성 및 크기 확대 (임의 조정: 2.5배)
         const manaBg = this.add.sprite(0, 0, 'energy');
+        manaBg.setScale(2.5);
         
+        // 💡 3. 에너지 글자가 잘 보이도록 검은색 두꺼운 테두리(stroke) 추가
         this.manaText = this.add.text(0, 0, '', { 
-            fontSize: '45px', color: '#fff', fontStyle: 'bold', padding: { top: 5, bottom: 5 } 
+            fontSize: '52px', 
+            color: '#ffffff', 
+            fontStyle: 'bold',
+            stroke: '#000000',      // 검은색 테두리
+            strokeThickness: 8,     // 테두리 두께 8px
+            padding: { top: 5, bottom: 5 } 
         }).setOrigin(0.5);
-        this.manaContainer = this.add.container(250, height - 250, [manaBg, this.manaText]);
+        
+        // 좌측 하단 여백 비율 기반으로 배치
+        this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
 
-        // 방어도 UI (일단 마름모 유지, 나중에 방패 이미지로 교체 가능)
+        // 플레이어 방어도 UI (체력바 옆에 배치)
         const blockBg = this.add.rectangle(0, 0, 50, 50, 0x00aaff).setAngle(45);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '28px', color: '#fff', fontStyle: 'bold', padding: { top: 5, bottom: 5 } 
         }).setOrigin(0.5);
-        this.blockContainer = this.add.container(300, height / 2 + 200, [blockBg, this.blockText]);
+        this.blockContainer = this.add.container(width * 0.2 - 120, height * 0.5 + 250, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        // 💡 적 스프라이트 교체
-        this.enemySprite = this.add.sprite(width - 400, height / 2, 'enemy_gunha');
+        // 💡 4. 적 건하 스프라이트 배치 및 크기 축소 (임의 조정: 0.45배)
+        this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha');
+        this.enemySprite.setScale(0.45);
         
-        this.enemyHpText = this.add.text(width - 400, height / 2 + 220, '', { 
+        this.enemyHpText = this.add.text(width * 0.8, height * 0.5 + 250, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
-        this.enemyIntentText = this.add.text(width - 400, height / 2 - 220, '', { 
+        
+        this.enemyIntentText = this.add.text(width * 0.8, height * 0.5 - 250, '', { 
             fontSize: '38px', color: '#ffaaaa', fontStyle: 'bold', padding: { top: 8, bottom: 8 } 
         }).setOrigin(0.5);
     }
@@ -183,7 +196,6 @@ export default class BattleScene extends Phaser.Scene {
         btnBg.on('pointerup', () => btnBg.fillColor = 0x555555);
     }
     
-    // 💡 1. 카드 사용 (Manager의 Result를 받아 시각 효과만 처리)
     playCard(cardData: ICardData, handIndex: number) {
         const result = BattleManager.playCard(cardData, handIndex);
 
@@ -205,7 +217,6 @@ export default class BattleScene extends Phaser.Scene {
         this.handleWinLose(); 
     }
 
-    // 💡 2. 턴 종료 연출
     endPlayerTurn() {
         BattleManager.endPlayerTurn(); 
         this.turnText.setText('적 턴...');
@@ -215,7 +226,6 @@ export default class BattleScene extends Phaser.Scene {
         });
     }
 
-    // 💡 3. 적 턴 연출 (Manager의 Result를 받아 화면에 그리기)
     processEnemyTurn() {
         const result = BattleManager.processEnemyTurn();
         
@@ -236,7 +246,6 @@ export default class BattleScene extends Phaser.Scene {
         }
     }
 
-    // 💡 4. 승패 연출 및 화면 전환
     handleWinLose(): boolean {
         const status = BattleManager.checkWinLose();
 
