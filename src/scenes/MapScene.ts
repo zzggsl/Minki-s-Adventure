@@ -34,15 +34,13 @@ export default class MapScene extends Phaser.Scene {
         });
     }
 
+    // MapScene.ts 내부의 createNode 함수 교체
     createNode(x: number, y: number, label: string, color: number, onClick: () => void) {
         const circle = this.add.circle(x, y, 150, color).setInteractive();
         circle.setStrokeStyle(8, 0xffffff);
         
         this.add.text(x, y, label, { 
-            fontSize: '45px', 
-            color: '#ffffff', 
-            fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 } 
+            fontSize: '45px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
 
         circle.on('pointerdown', () => {
@@ -51,6 +49,7 @@ export default class MapScene extends Phaser.Scene {
 
         circle.on('pointerup', () => {
             circle.fillColor = color;
+            this.sound.play('map_node'); // 💡 노드 클릭음 재생
             onClick();
         });
     }

@@ -49,22 +49,19 @@ export default class MenuScene extends Phaser.Scene {
         }
     }
 
-    // 기본 버튼 생성 로직
+    // MenuScene.ts 내부의 createButton 함수 교체
     createButton(x: number, y: number, text: string, onClick: () => void) {
         const button = this.add.text(x, y, text, { 
-            fontSize: '70px', 
-            color: '#ffffff', 
-            fontStyle: 'bold',
-            backgroundColor: '#333333',
+            fontSize: '70px', color: '#ffffff', fontStyle: 'bold', backgroundColor: '#333333',
             padding: { left: 50, right: 50, top: 25, bottom: 25 }
         }).setOrigin(0.5).setInteractive();
 
-        // 터치/마우스 오버 시 색상 변화 효과
         button.on('pointerover', () => button.setStyle({ color: '#ffdd00' }));
         button.on('pointerout', () => button.setStyle({ color: '#ffffff' }));
         button.on('pointerdown', () => button.setStyle({ color: '#aaaaaa' }));
         button.on('pointerup', () => {
             button.setStyle({ color: '#ffdd00' });
+            this.sound.play('click'); // 💡 클릭음 재생
             onClick();
         });
     }

@@ -8,7 +8,7 @@ import type { ICardData } from '../types';
 export default class BattleScene extends Phaser.Scene {
     playerSprite!: Phaser.GameObjects.Sprite;
     playerHpText!: Phaser.GameObjects.Text;
-    playerHpBarFill!: Phaser.GameObjects.Rectangle; // 💡 플레이어 체력바 게이지
+    playerHpBarFill!: Phaser.GameObjects.Rectangle; 
     
     manaContainer!: Phaser.GameObjects.Container;
     manaText!: Phaser.GameObjects.Text;
@@ -17,7 +17,7 @@ export default class BattleScene extends Phaser.Scene {
     
     enemySprite!: Phaser.GameObjects.Sprite;
     enemyHpText!: Phaser.GameObjects.Text;
-    enemyHpBarFill!: Phaser.GameObjects.Rectangle; // 💡 적 체력바 게이지
+    enemyHpBarFill!: Phaser.GameObjects.Rectangle; 
     enemyIntentText!: Phaser.GameObjects.Text;
     
     turnText!: Phaser.GameObjects.Text;
@@ -38,11 +38,14 @@ export default class BattleScene extends Phaser.Scene {
             fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
         
-        EventBus.on('hand-updated', this.renderHand, this);
+        EventBus.on('hand-updated', () => this.renderHand(false), this);
 
         BattleManager.startBattle();
         this.updateUI();
         this.turnText.setText('플레이어 턴');
+        
+        // 💡 최초 진입 시 드로우 애니메이션 실행
+        this.renderHand(true); 
     }
 
     createActors() {
@@ -54,34 +57,30 @@ export default class BattleScene extends Phaser.Scene {
         // ---------- [플레이어 영역] ----------
         this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player').setScale(0.4); 
         
-        // 💡 1. 플레이어 체력바 & 텍스트 세팅
-        this.add.rectangle(width * 0.2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333); // 배경
-        this.playerHpBarFill = this.add.rectangle(width * 0.2 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); // 게이지
+        this.add.rectangle(width * 0.2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333);
+        this.playerHpBarFill = this.add.rectangle(width * 0.2 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); 
         
         this.playerHpText = this.add.text(width * 0.2, height * 0.5 + 230, '', { 
             fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6 
         }).setOrigin(0.5);
 
-        // 💡 2. 마나 UI
         const manaBg = this.add.sprite(0, 0, 'energy').setScale(2.5);
         this.manaText = this.add.text(0, 0, '', { 
             fontSize: '52px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8 
         }).setOrigin(0.5);
         this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
 
-        // 💡 3. 플레이어 방어 UI (마름모 -> 방패 스프라이트)
+        // 💡 요청하신 방패 사이즈 및 위치 수정
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
-        // 체력바 바로 왼쪽에 배치
         this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
         // ---------- [적 영역] ----------
         this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha').setScale(0.45);
         
-        // 💡 4. 적 체력바 & 텍스트 세팅
         this.add.rectangle(width * 0.8, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333);
         this.enemyHpBarFill = this.add.rectangle(width * 0.8 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5);
         
@@ -94,7 +93,8 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
-    renderHand() {
+    // 💡 드로우 애니메이션 로직 추가 (animate 플래그)
+    renderHand(animate: boolean = false) {
         this.cardContainers.forEach(container => container.destroy());
         this.cardContainers = [];
 
@@ -107,15 +107,15 @@ export default class BattleScene extends Phaser.Scene {
 
         GameState.hand.forEach((cardData, index) => {
             const offsetFromCenter = index - (handSize - 1) / 2;
-            const x = startX + (index * cardSpacing);
-            const y = height - 150 + Math.abs(offsetFromCenter) * 30; 
-            const angle = offsetFromCenter * 5; 
+            const targetX = startX + (index * cardSpacing);
+            const targetY = height - 150 + Math.abs(offsetFromCenter) * 30; 
+            const targetAngle = offsetFromCenter * 5; 
 
-            this.createCardView(x, y, angle, cardData, index);
+            this.createCardView(targetX, targetY, targetAngle, cardData, index, animate, index);
         });
     }
 
-    createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number) {
+    createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number, animate: boolean, delayIndex: number) {
         const cardWidth = 260;
         const cardHeight = 380;
         
@@ -126,7 +126,6 @@ export default class BattleScene extends Phaser.Scene {
             fontSize: '40px', color: '#000', fontStyle: 'bold' 
         }).setOrigin(0.5);
         
-        // 💡 5. 카드 비용(에너지) UI를 검은 사각형에서 보석 스프라이트로 변경
         const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.8);
         const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
             fontSize: '42px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8
@@ -140,6 +139,23 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.setSize(cardWidth, cardHeight);
         cardContainer.setAngle(angle); 
         
+        // 💡 1. 한 장씩 스르륵 올라오는 애니메이션 (셔플 사운드 포함)
+        if (animate) {
+            cardContainer.y = this.cameras.main.height + 400; // 화면 밖 아래에서 시작
+            this.tweens.add({
+                targets: cardContainer,
+                y: y, // 원래 목표 위치
+                delay: delayIndex * 150, // 0.15초 간격으로 순차적 등장
+                duration: 400,
+                ease: 'Back.easeOut',
+                onStart: () => {
+                    // 등장할 때 랜덤 셔플 소리 재생
+                    const randomShuffle = Phaser.Math.Between(1, 7);
+                    this.sound.play(`shuffle${randomShuffle}`);
+                }
+            });
+        }
+
         cardContainer.setInteractive();
         this.input.setDraggable(cardContainer);
 
@@ -149,6 +165,7 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
+            this.sound.play('click'); // 💡 2. 호버 시 가벼운 틱 소리 재생
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
         });
 
@@ -186,13 +203,12 @@ export default class BattleScene extends Phaser.Scene {
 
     createEndTurnButton(x: number, y: number) {
         const btnBg = this.add.rectangle(x, y, 220, 80, 0x555555).setInteractive();
-        this.add.text(x, y, '턴 종료', { 
-            fontSize: '36px', color: '#fff', fontStyle: 'bold' 
-        }).setOrigin(0.5);
+        this.add.text(x, y, '턴 종료', { fontSize: '36px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
         btnBg.on('pointerdown', () => {
             if (GameState.turn === 'player') {
                 btnBg.fillColor = 0x333333;
+                this.sound.play('click'); // 💡 턴 종료 버튼 클릭음
                 this.endPlayerTurn();
             }
         });
@@ -203,12 +219,14 @@ export default class BattleScene extends Phaser.Scene {
         const result = BattleManager.playCard(cardData, handIndex);
 
         if (!result.success) {
+            this.sound.play('error'); // 💡 3. 마나 부족 등 실패 시 에러음
             this.showFloatingText(this.cameras.main.width / 2, this.cameras.main.height / 2, result.reason || "사용 불가", 0xff0000);
-            EventBus.emit('hand-updated'); 
+            this.renderHand(false); // 카드를 다시 제자리로 복구
             return;
         }
 
         if (result.damageDealt > 0) {
+            this.sound.play('hit'); // 💡 4. 적 타격음
             this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
             this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
         }
@@ -217,6 +235,7 @@ export default class BattleScene extends Phaser.Scene {
         }
 
         this.updateUI();
+        this.renderHand(false); // 💡 카드를 낸 후 남은 패를 중앙으로 예쁘게 정렬
         this.handleWinLose(); 
     }
 
@@ -235,6 +254,7 @@ export default class BattleScene extends Phaser.Scene {
         this.tweens.add({ targets: this.enemySprite, x: this.enemySprite.x - 30, yoyo: true, duration: 100 });
         
         if (result.damageDealt > 0) {
+            this.sound.play('hit'); // 💡 5. 플레이어 피격음 (동일한 hit.wav 사용)
             this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `-${result.damageDealt}`, 0xff0000);
         }
 
@@ -245,6 +265,7 @@ export default class BattleScene extends Phaser.Scene {
                 BattleManager.startNextTurn();
                 this.turnText.setText('플레이어 턴');
                 this.updateUI();
+                this.renderHand(true); // 💡 다음 턴 시작 시 다시 스르륵 드로우 애니메이션!
             });
         }
     }
@@ -284,13 +305,11 @@ export default class BattleScene extends Phaser.Scene {
     updateUI() {
         const hpBarWidth = 240;
 
-        // 💡 6. 플레이어 체력바 너비 및 색상(하늘색/빨간색) 업데이트
         this.playerHpText.setText(`${GameState.player.hp} / ${GameState.player.maxHp}`);
         const playerHpPercent = Math.max(0, GameState.player.hp / GameState.player.maxHp);
         this.playerHpBarFill.width = hpBarWidth * playerHpPercent;
         this.playerHpBarFill.fillColor = GameState.player.block > 0 ? 0x00aaff : 0xff0000;
 
-        // 💡 7. 적 체력바 너비 및 색상 업데이트
         this.enemyHpText.setText(`${GameState.enemy.hp} / ${GameState.enemy.maxHp}`);
         const enemyHpPercent = Math.max(0, GameState.enemy.hp / GameState.enemy.maxHp);
         this.enemyHpBarFill.width = hpBarWidth * enemyHpPercent;
