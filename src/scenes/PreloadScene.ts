@@ -23,6 +23,8 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.audio('error', 'error.mp3');
         this.load.audio('map_node', 'map_node.mp3');
         this.load.audio('hit', 'hit.wav');
+        this.load.audio('shieldappear', 'shieldappear.mp3');
+        this.load.audio('shieldblock', 'shieldblock.wav');
         
         // shuffle 1~7 연속 로드
         for (let i = 1; i <= 7; i++) {

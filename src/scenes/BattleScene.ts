@@ -70,11 +70,12 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
 
-        // 💡 요청하신 방패 사이즈 및 위치 수정
+        // 💡 3. 플레이어 방어 UI (방패 크기 및 위치 반영)
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
+        // 체력바 바로 왼쪽에 배치 (-150)
         this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
@@ -219,23 +220,30 @@ export default class BattleScene extends Phaser.Scene {
         const result = BattleManager.playCard(cardData, handIndex);
 
         if (!result.success) {
-            this.sound.play('error'); // 💡 3. 마나 부족 등 실패 시 에러음
+            this.sound.play('error'); 
             this.showFloatingText(this.cameras.main.width / 2, this.cameras.main.height / 2, result.reason || "사용 불가", 0xff0000);
-            this.renderHand(false); // 카드를 다시 제자리로 복구
+            this.renderHand(false); 
             return;
         }
 
-        if (result.damageDealt > 0) {
-            this.sound.play('hit'); // 💡 4. 적 타격음
-            this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
-            this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
-        }
+        // 💡 방어도 획득 효과음 (휙)
         if (result.blockGained > 0) {
+            this.sound.play('shieldappear');
             this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `+${result.blockGained} 방어도`, 0x00aaff);
         }
 
+        // 💡 적 공격 시 (내가 공격할 때 적이 방어도를 가졌다면)
+        if (result.blockedDamage > 0) {
+            this.sound.play('shieldblock');
+        }
+        if (result.damageDealt > 0) {
+            this.sound.play('hit'); 
+            this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
+            this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
+        }
+
         this.updateUI();
-        this.renderHand(false); // 💡 카드를 낸 후 남은 패를 중앙으로 예쁘게 정렬
+        this.renderHand(false); 
         this.handleWinLose(); 
     }
 
@@ -253,8 +261,13 @@ export default class BattleScene extends Phaser.Scene {
         
         this.tweens.add({ targets: this.enemySprite, x: this.enemySprite.x - 30, yoyo: true, duration: 100 });
         
+        // 💡 적의 공격을 방어도로 막았을 때
+        if (result.blockedDamage > 0) {
+            this.sound.play('shieldblock');
+        }
+        // 💡 적의 공격이 내 체력을 깎았을 때 (방어도를 뚫었거나 방어도가 없을 때)
         if (result.damageDealt > 0) {
-            this.sound.play('hit'); // 💡 5. 플레이어 피격음 (동일한 hit.wav 사용)
+            this.sound.play('hit'); 
             this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `-${result.damageDealt}`, 0xff0000);
         }
 
@@ -265,7 +278,7 @@ export default class BattleScene extends Phaser.Scene {
                 BattleManager.startNextTurn();
                 this.turnText.setText('플레이어 턴');
                 this.updateUI();
-                this.renderHand(true); // 💡 다음 턴 시작 시 다시 스르륵 드로우 애니메이션!
+                this.renderHand(true); 
             });
         }
     }
