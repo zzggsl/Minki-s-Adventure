@@ -8,7 +8,7 @@
 - [x] **BattleManager 분리 (리팩토링)**: `BattleScene`에서 순수 전투 연산 로직을 완벽히 분리하고, Result 객체 기반 구조로 전환하여 Phaser 의존성 제거 완료.
 
 ## 🚀 다음 목표 (To Do - High Priority)
-- [ ] **친구들 도트 스프라이트 및 효과음(SFX) 적용**: 임시 사각형 도형들을 제거하고, `PreloadScene`을 생성하여 그래픽과 사운드 에셋을 메모리에 선행 로드 후 게임에 적용하기.
+- [ ] **효과음(SFX) 적용**: 사운드 에셋을 메모리에 선행 로드 후 게임에 적용하기.
 
 ## ⏳ 향후 과제 (To Do - Medium/Low Priority)
 - [ ] Card 클래스 도입 및 효과(Effect) 시스템 고도화
