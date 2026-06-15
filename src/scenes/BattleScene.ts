@@ -70,12 +70,12 @@ export default class BattleScene extends Phaser.Scene {
         this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
 
         // 💡 3. 플레이어 방어 UI (마름모 -> 방패 스프라이트)
-        const blockBg = this.add.sprite(0, 0, 'shield').setScale(1.2);
+        const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
         // 체력바 바로 왼쪽에 배치
-        this.blockContainer = this.add.container(width * 0.2 - 160, height * 0.5 + 230, [blockBg, this.blockText]);
+        this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
         // ---------- [적 영역] ----------
