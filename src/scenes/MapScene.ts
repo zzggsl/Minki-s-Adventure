@@ -37,7 +37,7 @@ export default class MapScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         // 맵 노드 생성
-        this.createNode(width / 2, height / 2, '⚔️ 일반 전투', 0x882222, () => {
+        this.createNode(width / 2, height / 2, '💀', 0x882222, () => {
             this.scene.start('BattleScene');
         });
     }
