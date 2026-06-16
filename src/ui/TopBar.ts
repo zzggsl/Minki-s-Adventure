@@ -35,11 +35,13 @@ export class TopBar extends Phaser.GameObjects.Container {
 
         // 2. 왼쪽 정보 텍스트 (층수, 체력)
         this.floorText = config.scene.add.text(40, barHeight / 2, '층수: -', {
-            fontSize: '32px', color: '#ffffff', fontStyle: 'bold'
+            fontSize: '32px', color: '#ffffff', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 } // 💡 추가
         }).setOrigin(0, 0.5);
 
         this.hpText = config.scene.add.text(250, barHeight / 2, 'HP: - / -', {
-            fontSize: '32px', color: '#ffaaaa', fontStyle: 'bold'
+            fontSize: '32px', color: '#ffaaaa', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 } // 💡 추가
         }).setOrigin(0, 0.5);
 
         // 3. 오른쪽 버튼들 (미리 만들어둔 Button 클래스 재사용!)

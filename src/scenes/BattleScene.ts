@@ -411,10 +411,24 @@ export default class BattleScene extends Phaser.Scene {
         const cardHeight = 380;
         const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
         bg.setStrokeStyle(6, 0xffffff);
-        const nameText = this.add.text(0, -130, cardData.name, { fontSize: '38px', color: '#000', fontStyle: 'bold' }).setOrigin(0.5);
+        // 이름 텍스트
+        const nameText = this.add.text(0, -130, cardData.name, { 
+            fontSize: '38px', color: '#000', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 } // 💡 추가
+        }).setOrigin(0.5);
+        
+        // 코스트 텍스트
         const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
-        const costText = this.add.text(-90, -145, cardData.cost.toString(), { fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5);
-        const descText = this.add.text(0, 20, cardData.desc, { fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 } }).setOrigin(0.5);
+        const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
+            fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8,
+            padding: { top: 15, bottom: 15, left: 10, right: 10 } // 💡 추가
+        }).setOrigin(0.5);
+        
+        // 설명 텍스트
+        const descText = this.add.text(0, 20, cardData.desc, { 
+            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
+            padding: { top: 15, bottom: 15 } // 💡 추가
+        }).setOrigin(0.5);
         return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
     }
 

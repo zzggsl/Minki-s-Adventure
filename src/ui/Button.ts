@@ -42,7 +42,8 @@ export class Button extends Phaser.GameObjects.Container {
         this.label = config.scene.add.text(0, 0, config.text, {
             fontSize: config.fontSize || '36px',
             color: theme.text,
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            padding: { left: 10, right: 10, top: 15, bottom: 15 } // 💡 추가: 텍스트 잘림 방지 패딩
         }).setOrigin(0.5);
 
         // 3. 컨테이너에 추가 및 Scene에 등록

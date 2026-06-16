@@ -39,7 +39,8 @@ export class Modal extends Phaser.GameObjects.Container {
         this.titleText = config.scene.add.text(0, -height / 2 + 70, config.title, {
             fontSize: '60px',
             color: '#ffdd00',
-            fontStyle: 'bold'
+            fontStyle: 'bold',
+            padding: { top: 20, bottom: 20 } // 💡 추가: 텍스트 윗부분 잘림 방지
         }).setOrigin(0.5);
 
         // 4. 내용물을 담을 빈 컨테이너
