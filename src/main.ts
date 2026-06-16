@@ -4,6 +4,10 @@ import MenuScene from './scenes/MenuScene'; // 💡 메인 메뉴 추가
 import BattleScene from './scenes/BattleScene';
 import MapScene from './scenes/MapScene';
 import RewardScene from './scenes/RewardScene';
+import { SettingsManager } from './managers/SettingsManager'; // 💡 추가
+
+// 게임 설정 불러오기
+SettingsManager.loadSettings(); // 💡 추가
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
