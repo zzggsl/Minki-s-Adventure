@@ -34,41 +34,40 @@ export class Tooltip extends Phaser.GameObjects.Container {
     public show(x: number, y: number, items: TooltipItem[]) {
         if (items.length === 0) return;
 
-        // 기존에 그려진 텍스트 청소
         this.contentContainer.removeAll(true);
+        let currentY = 20;
 
-        let currentY = 20; // 텍스트를 그릴 시작 높이
-
-        // 💡 아이템 개수만큼 반복하며 텍스트를 생성하여 아래로 쌓음
         items.forEach(item => {
             const titleText = this.scene.add.text(25, currentY, item.title, {
                 fontSize: '32px', color: '#ffdd00', fontStyle: 'bold',
                 stroke: '#000000', strokeThickness: 4,
-                padding: { top: 5, bottom: 5 } // 글자 잘림 방지
+                padding: { top: 5, bottom: 5 }
             });
-            currentY += titleText.height + 5;
+            // 💡 수정됨: titleText의 패딩이 이미 있으므로 추가 높이를 뺌
+            currentY += titleText.height; 
 
             const descText = this.scene.add.text(25, currentY, item.desc, {
                 fontSize: '26px', color: '#ffffff', wordWrap: { width: 400 },
                 lineSpacing: 8,
-                padding: { top: 5, bottom: 15 } // 글자 잘림 방지
+                padding: { top: 5, bottom: 5 }
             });
-            currentY += descText.height + 15;
+            // 💡 수정됨: 아이템 간 간격을 15px로 타이트하게 조절
+            currentY += descText.height + 15; 
 
             this.contentContainer.add([titleText, descText]);
         });
 
-        // 생성된 텍스트들의 총 높이에 맞춰 배경 사각형 크기 조절
-        this.bg.height = currentY + 10;
+        // 💡 수정됨: 배경 사각형의 불필요한 아래 여백 완벽 제거
+        this.bg.height = currentY + 5;
 
-        // 화면 밖으로 툴팁이 잘리지 않도록 위치 보정 로직
-        let targetX = x + 20;
-        let targetY = y + 20;
+        // 💡 수정됨: 고정 위치를 사용할 것이므로 마우스 오프셋(+20) 제거
+        let targetX = x;
+        let targetY = y;
         const screenW = this.scene.cameras.main.width;
         const screenH = this.scene.cameras.main.height;
 
-        if (targetX + this.bg.width > screenW) targetX = x - this.bg.width - 20;
-        if (targetY + this.bg.height > screenH) targetY = y - this.bg.height - 20;
+        if (targetX + this.bg.width > screenW) targetX = screenW - this.bg.width - 20;
+        if (targetY + this.bg.height > screenH) targetY = screenH - this.bg.height - 20;
 
         this.setPosition(targetX, targetY);
         this.setVisible(true);

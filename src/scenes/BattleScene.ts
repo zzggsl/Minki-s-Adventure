@@ -107,12 +107,13 @@ export default class BattleScene extends Phaser.Scene {
         // 플레이어 렌더링
         this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player').setScale(0.4).setInteractive(); 
         
-        // 💡 플레이어 호버 툴팁 연동 (추후 버프/상태이상 표시용)
-        this.playerSprite.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        // 💡 기존: (pointer: Phaser.Input.Pointer) 삭제하고 고정 위치 50, 150 입력
+        this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.` });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
-            this.tooltip.show(pointer.x, pointer.y, items);
+            
+            this.tooltip.show(50, 150, items); // ⬅️ 좌측 상단에 고정!
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -134,11 +135,12 @@ export default class BattleScene extends Phaser.Scene {
         // 적 렌더링
         this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha').setScale(0.45).setInteractive();
         
-        // 💡 적 호버 툴팁 연동 (의도 및 상태이상)
-        this.enemySprite.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        // 💡 기존: (pointer: Phaser.Input.Pointer) 삭제하고 우측 고정 위치 입력
+        this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '의도: 공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.` });
-            this.tooltip.show(pointer.x, pointer.y, items);
+            
+            this.tooltip.show(width - 500, 150, items); // ⬅️ 우측 상단에 고정!
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 
@@ -197,21 +199,22 @@ export default class BattleScene extends Phaser.Scene {
         this.input.setDraggable(cardContainer);
         const startPos = { x, y, angle };
 
-        cardContainer.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        // 💡 기존: (pointer: Phaser.Input.Pointer) 부분 삭제
+        cardContainer.on('pointerover', () => {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
             this.sound.play('click'); 
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
 
-            // 💡 카드 툴팁 스마트 파싱
             const tooltipItems: TooltipItem[] = [];
             for (const [keyword, description] of Object.entries(KEYWORD_DICT)) {
                 if (cardData.desc.includes(keyword) || cardData.name.includes(keyword)) {
                     tooltipItems.push({ title: keyword, desc: description });
                 }
             }
-            if (tooltipItems.length > 0) this.tooltip.show(pointer.x, pointer.y, tooltipItems);
+            // 💡 마우스 좌표 대신 좌측 상단 고정 위치 50, 150 입력
+            if (tooltipItems.length > 0) this.tooltip.show(50, 150, tooltipItems); // ⬅️ 좌측 상단에 고정!
         });
 
         cardContainer.on('pointerout', () => {
