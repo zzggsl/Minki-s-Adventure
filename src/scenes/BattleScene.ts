@@ -104,10 +104,10 @@ export default class BattleScene extends Phaser.Scene {
         
         this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
-            if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.` });
+            if (GameState.player.block > 0) items.push({ title: '방어도', desc: `다음 턴까지 피해를 방어합니다`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
             // 💡 요건 1-1: 플레이어 기준 오른쪽 띄우기
-            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items);
+            this.tooltip.show(this.playerSprite.x + 100, this.playerSprite.y - 100, items);
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -128,7 +128,7 @@ export default class BattleScene extends Phaser.Scene {
         
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
-            if (GameState.enemy.intent) items.push({ title: '의도: 공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.` });
+            if (GameState.enemy.intent) items.push({ title: '공격', desc: `이 적은 ${GameState.enemy.intent.value}의 피해로 공격하려고 합니다.`, iconKey: 'swordicon' });
             // 💡 요건 1-2: 적 기준 왼쪽 띄우기 (툴팁 너비를 고려하여 넉넉히 -480)
             this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items);
         });
@@ -422,7 +422,9 @@ export default class BattleScene extends Phaser.Scene {
         } else {
             this.blockContainer.setVisible(false);
         }
-        this.enemyIntentText.setText(`의도:공격(${GameState.enemy.intent?.value})`);
+        this.enemyIntentText.setText(`${GameState.enemy.intent?.value || ''}`);
+        // 아이콘 추가 (이미 씬에 적 정보가 그려질 때 아이콘을 함께 배치)
+        this.add.sprite(this.enemySprite.x - 30, this.enemySprite.y - 250, 'swordicon').setScale(0.1); 
     }
 
     showFloatingText(x: number, y: number, message: string, color: number) {
