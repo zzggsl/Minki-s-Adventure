@@ -16,6 +16,9 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.image('enemy_gunha', 'gunha.png');
         this.load.image('energy', 'energy.png');
         this.load.image('shield', 'shield.png');
+        this.load.image('swordicon', 'swordicon.png');
+        this.load.image('shieldicon', 'shieldicon.png');
+
 
         // 💡 사운드 로드
         this.load.setPath('assets/sounds/');

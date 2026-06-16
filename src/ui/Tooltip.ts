@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 export interface TooltipItem {
     title: string;
     desc: string;
+    iconKey?: string; // 💡 추가: 아이콘 스프라이트 키
 }
 
 export class Tooltip extends Phaser.GameObjects.Container {
@@ -38,7 +39,10 @@ export class Tooltip extends Phaser.GameObjects.Container {
         let currentY = 20;
 
         items.forEach(item => {
-            const titleText = this.scene.add.text(25, currentY, item.title, {
+            if (item.iconKey) {
+                this.scene.add.sprite(40, currentY + 15, item.iconKey).setScale(0.1).setOrigin(0.5);
+            }
+            const titleText = this.scene.add.text(item.iconKey ? 70 : 25, currentY, item.title, {
                 fontSize: '32px', color: '#ffdd00', fontStyle: 'bold',
                 stroke: '#000000', strokeThickness: 4,
                 padding: { top: 5, bottom: 5 }
