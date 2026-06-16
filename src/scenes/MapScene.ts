@@ -33,7 +33,7 @@ export default class MapScene extends Phaser.Scene {
 
         this.add.text(width / 2, 200, '다음 목적지를 선택하세요', { 
             fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 }
+            padding: { top: 20, bottom: 20 } // 💡 추가
         }).setOrigin(0.5);
 
         // 맵 노드 생성
@@ -42,13 +42,14 @@ export default class MapScene extends Phaser.Scene {
         });
     }
 
-    // 맵 노드를 그리는 함수
+    // 맵 노드를 그리는 함수 안쪽
     private createNode(x: number, y: number, label: string, color: number, onClick: () => void) {
         const circle = this.add.circle(x, y, 100, color).setInteractive();
         circle.setStrokeStyle(6, 0xffffff);
         
         this.add.text(x, y, label, { 
-            fontSize: '36px', color: '#ffffff', fontStyle: 'bold' 
+            fontSize: '36px', color: '#ffffff', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 } // 💡 추가: 일반 전투 등 노드 글자 잘림 방지
         }).setOrigin(0.5);
 
         circle.on('pointerover', () => {
@@ -112,18 +113,18 @@ export default class MapScene extends Phaser.Scene {
         
         const nameText = this.add.text(0, -130, cardData.name, { 
             fontSize: '38px', color: '#000', fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 }
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
         const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
             fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8,  
-            padding: { top: 15, bottom: 15 }
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         const descText = this.add.text(0, 20, cardData.desc, { 
             fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
-            padding: { top: 15, bottom: 15 }
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
 
         return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
@@ -137,7 +138,7 @@ export default class MapScene extends Phaser.Scene {
 
         const content = modal.contentContainer;
         const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
-            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
         }).setOrigin(0.5);
         content.add(modeText);
 

@@ -18,9 +18,10 @@ export default class MenuScene extends Phaser.Scene {
 
         // 타이틀 텍스트
         this.add.text(width / 2, height / 3, '민기의 모험', { 
-            fontSize: '120px', color: '#ffffff', fontStyle: 'bold' 
+            fontSize: '120px', color: '#ffffff', fontStyle: 'bold',
+            padding: { top: 30, bottom: 30 } // 💡 추가: 거대 폰트 잘림 방지
         }).setOrigin(0.5);
-
+        
         // 💡 1. 새 게임 버튼 (Primary Variant 사용)
         new Button({
             scene: this,
@@ -78,7 +79,7 @@ export default class MenuScene extends Phaser.Scene {
         // 현재 적용된 모드 표시 텍스트
         const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
             fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 }
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         content.add(modeText);
 

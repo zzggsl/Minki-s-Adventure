@@ -63,7 +63,7 @@ export default class BattleScene extends Phaser.Scene {
         });
         
         this.turnText = this.add.text(width / 2, 120, '', { 
-            fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
+            fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         EventBus.on('hand-updated', () => this.renderHand(false), this);
@@ -147,7 +147,8 @@ export default class BattleScene extends Phaser.Scene {
         bg.setStrokeStyle(6, 0xffffff);
         
         const nameText = this.add.text(0, -130, cardData.name, { 
-            fontSize: '40px', color: '#000', fontStyle: 'bold' 
+            fontSize: '40px', color: '#000', fontStyle: 'bold',
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.8);
@@ -156,7 +157,8 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
         
         const descText = this.add.text(0, 20, cardData.desc, { 
-            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 }
+            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
 
         const cardContainer = this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
@@ -414,7 +416,7 @@ export default class BattleScene extends Phaser.Scene {
         // 이름 텍스트
         const nameText = this.add.text(0, -130, cardData.name, { 
             fontSize: '38px', color: '#000', fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 } // 💡 추가
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         // 코스트 텍스트
@@ -427,7 +429,7 @@ export default class BattleScene extends Phaser.Scene {
         // 설명 텍스트
         const descText = this.add.text(0, 20, cardData.desc, { 
             fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
-            padding: { top: 15, bottom: 15 } // 💡 추가
+            padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
     }
