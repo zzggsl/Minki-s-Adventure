@@ -77,7 +77,8 @@ export default class MenuScene extends Phaser.Scene {
         
         // 현재 적용된 모드 표시 텍스트
         const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
-            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0.5);
         content.add(modeText);
 

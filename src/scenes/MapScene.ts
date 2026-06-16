@@ -32,7 +32,8 @@ export default class MapScene extends Phaser.Scene {
         });
 
         this.add.text(width / 2, 200, '다음 목적지를 선택하세요', { 
-            fontSize: '48px', color: '#ffffff', fontStyle: 'bold' 
+            fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0.5);
 
         // 맵 노드 생성
@@ -110,16 +111,19 @@ export default class MapScene extends Phaser.Scene {
         bg.setStrokeStyle(6, 0xffffff);
         
         const nameText = this.add.text(0, -130, cardData.name, { 
-            fontSize: '38px', color: '#000', fontStyle: 'bold' 
+            fontSize: '38px', color: '#000', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
         const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
-            fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8
+            fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8,  
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0.5);
         
         const descText = this.add.text(0, 20, cardData.desc, { 
-            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 }
+            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0.5);
 
         return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
