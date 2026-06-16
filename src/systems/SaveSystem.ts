@@ -17,6 +17,12 @@ export class SaveSystem {
         console.log('게임이 저장되었습니다.', saveData);
     }
 
+    public static hasSave(): boolean {
+        // 로컬 스토리지에 저장된 데이터가 있으면 true, 없으면 false 반환
+        return localStorage.getItem('SAVE_KEY') !== null; 
+
+    }
+
     // 💡 2. 저장된 게임 불러오기
     static loadGame(): boolean {
         const saveString = localStorage.getItem(SAVE_KEY);

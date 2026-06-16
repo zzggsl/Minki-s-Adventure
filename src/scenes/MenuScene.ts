@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem';
+import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
+import { SettingsManager } from '../managers/SettingsManager';
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
@@ -7,107 +10,113 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     create() {
+        // 💡 접속 기기 환경 감지 테스트 (개발자 콘솔 F12에서 확인 가능)
+        console.log("현재 모바일 UI 모드인가?", SettingsManager.isMobileUI(this));
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // 1. 게임 타이틀
+        // 타이틀 텍스트
         this.add.text(width / 2, height / 3, '민기의 모험', { 
-            fontSize: '150px', color: '#ffdd00', fontStyle: 'bold' 
+            fontSize: '120px', color: '#ffffff', fontStyle: 'bold' 
         }).setOrigin(0.5);
 
-        // 2. 새 게임 버튼 (위쪽으로 이동)
-        this.createButton(width / 2, height / 2 + 150, '새 게임', () => {
-            SaveSystem.clearSave(); // 기존 세이브 삭제
-            SaveSystem.resetGame(); // 덱과 층수 1층으로 초기화
-            this.scene.start('MapScene');
+        // 💡 1. 새 게임 버튼 (Primary Variant 사용)
+        new Button({
+            scene: this,
+            x: width / 2,
+            y: height / 2 + 50,
+            text: '새 게임',
+            variant: 'primary',
+            onClick: () => {
+                SaveSystem.clearSave(); // 기존 세이브 삭제
+                this.scene.start('MapScene');
+            }
         });
 
-        // 3. 계속하기 버튼 (아래쪽으로 이동 및 세이브 데이터 확인)
-        const saveString = localStorage.getItem('my_deckbuilder_save');
-        let hasSave = false;
-        let savedFloor = 1;
-
-        if (saveString) {
-            hasSave = true;
-            // 저장된 데이터에서 현재 층수를 빼옵니다.
-            const saveData = JSON.parse(saveString);
-            savedFloor = saveData.floor || 1;
-        }
-
-        if (hasSave) {
-            this.createButton(width / 2, height / 2 + 350, '계속하기', () => {
-                // 바로 MapScene으로 넘어가지 않고 팝업 창을 띄웁니다.
-                this.showContinuePopup(width, height, savedFloor);
+        // 💡 2. 이어하기 버튼 (Secondary Variant 사용, 세이브가 있을 때만 렌더링)
+        if (SaveSystem.hasSave()) {
+            new Button({
+                scene: this,
+                x: width / 2,
+                y: height / 2 + 180,
+                text: '이어하기',
+                variant: 'secondary',
+                onClick: () => {
+                    SaveSystem.loadGame();
+                    this.scene.start('MapScene');
+                }
             });
-        } else {
-            // 세이브가 없으면 어두운 회색으로 표시 (터치 불가)
-            this.add.text(width / 2, height / 2 + 350, '계속하기 (저장 파일 없음)', { 
-                fontSize: '70px', color: '#555555', fontStyle: 'bold',
-                backgroundColor: '#222222', // 배경도 어둡게
-                padding: { left: 50, right: 50, top: 25, bottom: 25 }
-            }).setOrigin(0.5);
         }
-    }
 
-    // MenuScene.ts 내부의 createButton 함수 교체
-    createButton(x: number, y: number, text: string, onClick: () => void) {
-        const button = this.add.text(x, y, text, { 
-            fontSize: '70px', color: '#ffffff', fontStyle: 'bold', backgroundColor: '#333333',
-            padding: { left: 50, right: 50, top: 25, bottom: 25 }
-        }).setOrigin(0.5).setInteractive();
-
-        button.on('pointerover', () => button.setStyle({ color: '#ffdd00' }));
-        button.on('pointerout', () => button.setStyle({ color: '#ffffff' }));
-        button.on('pointerdown', () => button.setStyle({ color: '#aaaaaa' }));
-        button.on('pointerup', () => {
-            button.setStyle({ color: '#ffdd00' });
-            this.sound.play('click'); // 💡 클릭음 재생
-            onClick();
+        // 💡 3. 설정 버튼 (우측 상단 배치)
+        new Button({
+            scene: this,
+            x: width - 150,
+            y: 100,
+            text: '⚙️ 설정',
+            variant: 'secondary',
+            width: 200,
+            height: 60,
+            fontSize: '32px',
+            onClick: () => this.openSettingsModal() // 모달 열기 호출
         });
     }
 
-    // 💡 팝업(모달) 창 생성 로직
-    showContinuePopup(width: number, height: number, floor: number) {
-        // 1. 화면 전체를 덮는 반투명 검은색 배경 (클릭 방어용)
-        const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x000000, 0.7).setInteractive();
+    // 💡 4. 설정 모달 창 생성 함수
+    private openSettingsModal() {
+        const modal = new Modal({
+            scene: this,
+            title: '환경 설정',
+            width: 800,
+            height: 600
+        });
 
-        // 2. 중앙 팝업 박스
-        const box = this.add.rectangle(width / 2, height / 2, 1000, 500, 0x222222);
-        box.setStrokeStyle(8, 0xffffff);
-
-        // 3. 안내 텍스트
-        const text = this.add.text(width / 2, height / 2 - 80, `마지막 기록(${floor}층)부터\n진행하시겠습니까?`, {
-            fontSize: '60px', color: '#ffffff', fontStyle: 'bold', align: 'center', padding: { top: 20, bottom: 20, left: 20, right: 20 }
+        const content = modal.contentContainer;
+        
+        // 현재 적용된 모드 표시 텍스트
+        const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
         }).setOrigin(0.5);
+        content.add(modeText);
 
-        // 4. '예' 버튼 (초록색)
-        const yesBtn = this.add.text(width / 2 - 200, height / 2 + 100, '예', {
-            fontSize: '60px', color: '#ffffff', backgroundColor: '#44aa44', fontStyle: 'bold',
-            padding: { left: 60, right: 60, top: 20, bottom: 20 }
-        }).setOrigin(0.5).setInteractive();
-
-        yesBtn.on('pointerover', () => yesBtn.setStyle({ color: '#ffdd00' }));
-        yesBtn.on('pointerout', () => yesBtn.setStyle({ color: '#ffffff' }));
-        yesBtn.on('pointerup', () => {
-            SaveSystem.loadGame();
-            this.scene.start('MapScene');
+        // 자동 감지 버튼
+        const autoBtn = new Button({
+            scene: this, x: -220, y: 50,
+            text: '자동 감지', variant: 'secondary',
+            width: 180, height: 60, fontSize: '28px',
+            onClick: () => {
+                SettingsManager.setForceUIMode('auto');
+                modeText.setText(`현재 UI 모드: auto`);
+                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
+            }
         });
 
-        // 5. '아니오' 버튼 (빨간색)
-        const noBtn = this.add.text(width / 2 + 200, height / 2 + 100, '아니오', {
-            fontSize: '60px', color: '#ffffff', backgroundColor: '#aa4444', fontStyle: 'bold',
-            padding: { left: 40, right: 40, top: 20, bottom: 20 }
-        }).setOrigin(0.5).setInteractive();
-
-        noBtn.on('pointerover', () => noBtn.setStyle({ color: '#ffdd00' }));
-        noBtn.on('pointerout', () => noBtn.setStyle({ color: '#ffffff' }));
-        noBtn.on('pointerup', () => {
-            // '아니오'를 누르면 팝업창 구성 요소들을 모두 파괴(제거)하여 원래 화면으로 돌아갑니다.
-            overlay.destroy();
-            box.destroy();
-            text.destroy();
-            yesBtn.destroy();
-            noBtn.destroy();
+        // PC 강제 모드 버튼
+        const pcBtn = new Button({
+            scene: this, x: 0, y: 50,
+            text: 'PC 모드', variant: 'primary',
+            width: 180, height: 60, fontSize: '28px',
+            onClick: () => {
+                SettingsManager.setForceUIMode('pc');
+                modeText.setText(`현재 UI 모드: pc`);
+                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
+            }
         });
+
+        // 모바일 강제 모드 버튼
+        const mobileBtn = new Button({
+            scene: this, x: 220, y: 50,
+            text: '모바일 모드', variant: 'primary',
+            width: 180, height: 60, fontSize: '28px',
+            onClick: () => {
+                SettingsManager.setForceUIMode('mobile');
+                modeText.setText(`현재 UI 모드: mobile`);
+                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
+            }
+        });
+
+        // 모달의 내용물 그릇(contentContainer)에 텍스트와 버튼들 담기
+        content.add([autoBtn, pcBtn, mobileBtn]);
     }
 }
