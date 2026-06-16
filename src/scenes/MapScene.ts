@@ -84,7 +84,7 @@ export default class MapScene extends Phaser.Scene {
         const cellW = 270 * cardScale + 30; 
         const cellH = 390 * cardScale + 40; 
         const startX = -((cols - 1) * cellW) / 2; 
-        const startY = -400;         
+        const startY = -250;         
 
         GameState.masterDeck.forEach((cardData, index) => {
             const col = index % cols;

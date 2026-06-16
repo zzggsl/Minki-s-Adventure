@@ -12,6 +12,7 @@ import type { ICardData } from '../types';
 export default class BattleScene extends Phaser.Scene {
     private topBar!: TopBar;
     private endTurnButton!: Button;
+    private turnCount: number = 1; // 💡 추가: 현재 턴 수를 기억할 변수
 
     playerSprite!: Phaser.GameObjects.Sprite;
     playerHpText!: Phaser.GameObjects.Text;
@@ -50,7 +51,7 @@ export default class BattleScene extends Phaser.Scene {
             scene: this,
             x: width - 200,
             y: height / 1.2,
-            text: `${GameState.floor}층 턴 종료`,
+            text: `${this.turnCount}턴 종료`,
             variant: 'secondary',
             width: 260,
             height: 80,
@@ -300,9 +301,10 @@ export default class BattleScene extends Phaser.Scene {
 
         if (!this.handleWinLose()) {
             this.time.delayedCall(1000, () => {
+                this.turnCount++;
                 BattleManager.startNextTurn();
                 this.turnText.setText('플레이어 턴');
-                this.endTurnButton.setText(`${GameState.floor}층 턴 종료`); 
+                this.turnText.setText(`${this.turnCount}턴 종료`);
                 this.updateUI();
                 this.renderHand(true); 
             });
@@ -392,7 +394,7 @@ export default class BattleScene extends Phaser.Scene {
         const cellW = 270 * cardScale + 30;
         const cellH = 390 * cardScale + 40;
         const startX = -((cols - 1) * cellW) / 2;
-        const startY = -400;
+        const startY = -250;
 
         GameState.masterDeck.forEach((cardData, index) => {
             const col = index % cols;
