@@ -30,6 +30,7 @@ export default class MenuScene extends Phaser.Scene {
             variant: 'primary',
             onClick: () => {
                 SaveSystem.clearSave(); // 기존 세이브 삭제
+                SaveSystem.resetGame(); // 💡 누락되었던 핵심 코드: 체력과 기본 덱을 다시 채워줍니다!
                 this.scene.start('MapScene');
             }
         });
