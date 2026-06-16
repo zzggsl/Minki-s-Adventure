@@ -8,7 +8,7 @@ export default class PreloadScene extends Phaser.Scene {
     preload() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-        this.add.text(width / 2, height / 2, '로딩 중...', { fontSize: '40px', color: '#ffffff' }).setOrigin(0.5);
+        this.add.text(width / 2, height / 2, '로딩 중...', { fontSize: '40px', color: '#ffffff', padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
 
         // 이미지 로드
         this.load.setPath('assets/sprites/');
