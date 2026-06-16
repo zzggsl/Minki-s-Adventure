@@ -304,7 +304,7 @@ export default class BattleScene extends Phaser.Scene {
                 this.turnCount++;
                 BattleManager.startNextTurn();
                 this.turnText.setText('플레이어 턴');
-                this.turnText.setText(`${this.turnCount}턴 종료`);
+                this.endTurnButton.setText(`${this.turnCount}턴 종료`);
                 this.updateUI();
                 this.renderHand(true); 
             });
