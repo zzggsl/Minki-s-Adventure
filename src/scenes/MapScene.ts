@@ -42,29 +42,40 @@ export default class MapScene extends Phaser.Scene {
         });
     }
 
-    // 맵 노드를 그리는 함수 안쪽
+    // 맵 노드를 그리는 함수 (컨테이너로 그룹화하여 일체감 향상)
     private createNode(x: number, y: number, label: string, color: number, onClick: () => void) {
-        const circle = this.add.circle(x, y, 100, color).setInteractive();
+        // 1. 기준점을 (0, 0)으로 하여 원과 텍스트를 생성합니다.
+        const circle = this.add.circle(0, 0, 100, color);
         circle.setStrokeStyle(6, 0xffffff);
         
-        this.add.text(x, y, label, { 
-            fontSize: '36px', color: '#ffffff', fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 } // 💡 추가: 일반 전투 등 노드 글자 잘림 방지
+        const text = this.add.text(0, 0, label, { 
+            fontSize: '60px', // 💡 이모지가 잘 보이게 크기 증가
+            color: '#ffffff', 
+            fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
 
-        circle.on('pointerover', () => {
-            circle.setStrokeStyle(10, 0xffdd00);
-            this.tweens.add({ targets: circle, scale: 1.1, duration: 100 });
-        });
-
-        circle.on('pointerout', () => {
-            circle.setStrokeStyle(6, 0xffffff);
-            this.tweens.add({ targets: circle, scale: 1, duration: 100 });
-        });
-
-        circle.on('pointerdown', () => circle.fillColor = 0x550000);
+        // 2. 원과 텍스트를 하나의 컨테이너로 묶습니다.
+        const container = this.add.container(x, y, [circle, text]);
         
-        circle.on('pointerup', () => {
+        // 3. 텍스트 위를 덮을 수 있도록 컨테이너 전체를 클릭 영역으로 지정합니다. (반지름이 100이니 너비/높이는 200)
+        container.setSize(200, 200);
+        container.setInteractive();
+
+        // 4. 애니메이션의 타겟(targets)을 circle이 아닌 container 전체로 지정합니다!
+        container.on('pointerover', () => {
+            circle.setStrokeStyle(10, 0xffdd00);
+            this.tweens.add({ targets: container, scale: 1.1, duration: 100 }); // 💡 같이 커짐
+        });
+
+        container.on('pointerout', () => {
+            circle.setStrokeStyle(6, 0xffffff);
+            this.tweens.add({ targets: container, scale: 1, duration: 100 }); // 💡 같이 작아짐
+        });
+
+        container.on('pointerdown', () => circle.fillColor = 0x550000);
+        
+        container.on('pointerup', () => {
             circle.fillColor = color;
             this.sound.play('map_node'); 
             onClick();
