@@ -208,7 +208,7 @@ export default class BattleScene extends Phaser.Scene {
                 }
             }
             // 💡 요건 1-3: 카드 기준 오른쪽 위로 띄우기
-            if (tooltipItems.length > 0) this.tooltip.show(cardContainer.x + 160, cardContainer.y - 300, tooltipItems);
+            if (tooltipItems.length > 0) this.tooltip.show(cardContainer.x + 165, cardContainer.y - 310, tooltipItems);
         });
 
         cardContainer.on('pointerout', () => {
