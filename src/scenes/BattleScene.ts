@@ -3,9 +3,16 @@ import { GameState } from '../core/GameState';
 import { EventBus } from '../core/EventBus';
 import { SaveSystem } from '../systems/SaveSystem';
 import { BattleManager } from '../managers/BattleManager';
+import { TopBar } from '../ui/TopBar';
+import { Modal } from '../ui/Modal';
+import { Button } from '../ui/Button';
+import { SettingsManager } from '../managers/SettingsManager';
 import type { ICardData } from '../types';
 
 export default class BattleScene extends Phaser.Scene {
+    private topBar!: TopBar;
+    private endTurnButton!: Button;
+
     playerSprite!: Phaser.GameObjects.Sprite;
     playerHpText!: Phaser.GameObjects.Text;
     playerHpBarFill!: Phaser.GameObjects.Rectangle; 
@@ -31,10 +38,30 @@ export default class BattleScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
+        this.topBar = new TopBar({
+            scene: this,
+            onDeckClick: () => this.openDeckModal(),
+            onSettingsClick: () => this.openSettingsModal()
+        });
+
         this.createActors();
-        this.createEndTurnButton(width - 200, height / 1.2);
         
-        this.turnText = this.add.text(width / 2, 100, '', { 
+        this.endTurnButton = new Button({
+            scene: this,
+            x: width - 200,
+            y: height / 1.2,
+            text: `${GameState.floor}층 턴 종료`,
+            variant: 'secondary',
+            width: 260,
+            height: 80,
+            onClick: () => {
+                if (GameState.turn === 'player') {
+                    this.endPlayerTurn();
+                }
+            }
+        });
+        
+        this.turnText = this.add.text(width / 2, 120, '', { 
             fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
         }).setOrigin(0.5);
         
@@ -43,8 +70,6 @@ export default class BattleScene extends Phaser.Scene {
         BattleManager.startBattle();
         this.updateUI();
         this.turnText.setText('플레이어 턴');
-        
-        // 💡 최초 진입 시 드로우 애니메이션 실행
         this.renderHand(true); 
     }
 
@@ -54,10 +79,10 @@ export default class BattleScene extends Phaser.Scene {
         const hpBarWidth = 240;
         const hpBarHeight = 30;
 
-        // ---------- [플레이어 영역] ----------
+        // 플레이어 영역
         this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player').setScale(0.4); 
         
-        this.add.rectangle(width * 0.2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333);
+        this.add.rectangle(width * 0.2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333); 
         this.playerHpBarFill = this.add.rectangle(width * 0.2 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); 
         
         this.playerHpText = this.add.text(width * 0.2, height * 0.5 + 230, '', { 
@@ -70,16 +95,14 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
 
-        // 💡 3. 플레이어 방어 UI (방패 크기 및 위치 반영)
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { 
             fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6
         }).setOrigin(0.5);
-        // 체력바 바로 왼쪽에 배치 (-150)
         this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        // ---------- [적 영역] ----------
+        // 적 영역
         this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha').setScale(0.45);
         
         this.add.rectangle(width * 0.8, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333);
@@ -94,7 +117,6 @@ export default class BattleScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
-    // 💡 드로우 애니메이션 로직 추가 (animate 플래그)
     renderHand(animate: boolean = false) {
         this.cardContainers.forEach(container => container.destroy());
         this.cardContainers = [];
@@ -140,17 +162,15 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.setSize(cardWidth, cardHeight);
         cardContainer.setAngle(angle); 
         
-        // 💡 1. 한 장씩 스르륵 올라오는 애니메이션 (셔플 사운드 포함)
         if (animate) {
-            cardContainer.y = this.cameras.main.height + 400; // 화면 밖 아래에서 시작
+            cardContainer.y = this.cameras.main.height + 400; 
             this.tweens.add({
                 targets: cardContainer,
-                y: y, // 원래 목표 위치
-                delay: delayIndex * 150, // 0.15초 간격으로 순차적 등장
+                y: y, 
+                delay: delayIndex * 150, 
                 duration: 400,
                 ease: 'Back.easeOut',
                 onStart: () => {
-                    // 등장할 때 랜덤 셔플 소리 재생
                     const randomShuffle = Phaser.Math.Between(1, 7);
                     this.sound.play(`shuffle${randomShuffle}`);
                 }
@@ -166,7 +186,7 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
-            this.sound.play('click'); // 💡 2. 호버 시 가벼운 틱 소리 재생
+            this.sound.play('click'); 
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
         });
 
@@ -202,20 +222,6 @@ export default class BattleScene extends Phaser.Scene {
         this.cardContainers.push(cardContainer);
     }
 
-    createEndTurnButton(x: number, y: number) {
-        const btnBg = this.add.rectangle(x, y, 220, 80, 0x555555).setInteractive();
-        this.add.text(x, y, '턴 종료', { fontSize: '36px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
-
-        btnBg.on('pointerdown', () => {
-            if (GameState.turn === 'player') {
-                btnBg.fillColor = 0x333333;
-                this.sound.play('click'); // 💡 턴 종료 버튼 클릭음
-                this.endPlayerTurn();
-            }
-        });
-        btnBg.on('pointerup', () => btnBg.fillColor = 0x555555);
-    }
-    
     playCard(cardData: ICardData, handIndex: number) {
         const result = BattleManager.playCard(cardData, handIndex);
 
@@ -226,30 +232,50 @@ export default class BattleScene extends Phaser.Scene {
             return;
         }
 
-        // 💡 방어도 획득 효과음 (휙)
-        if (result.blockGained > 0) {
-            this.sound.play('shieldappear');
-            this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `+${result.blockGained} 방어도`, 0x00aaff);
+        if (result.damageDealt > 0 || cardData.type === 'ATTACK') {
+            this.shootProjectile(this.playerSprite.x, this.playerSprite.y, this.enemySprite.x, this.enemySprite.y, () => {
+                if (result.blockedDamage > 0) this.sound.play('shieldblock');
+                if (result.damageDealt > 0) {
+                    this.sound.play('hit'); 
+                    this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
+                    this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
+                }
+                this.updateUI(); 
+                this.handleWinLose(); 
+            });
+        } else {
+            if (result.blockGained > 0) {
+                this.sound.play('shieldappear');
+                this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `+${result.blockGained}`, 0x00aaff);
+            }
+            this.updateUI();
+            this.handleWinLose(); 
         }
 
-        // 💡 적 공격 시 (내가 공격할 때 적이 방어도를 가졌다면)
-        if (result.blockedDamage > 0) {
-            this.sound.play('shieldblock');
-        }
-        if (result.damageDealt > 0) {
-            this.sound.play('hit'); 
-            this.showFloatingText(this.enemySprite.x, this.enemySprite.y - 100, `-${result.damageDealt}`, 0xff0000);
-            this.tweens.add({ targets: this.playerSprite, x: this.playerSprite.x + 30, yoyo: true, duration: 100 });
-        }
-
-        this.updateUI();
         this.renderHand(false); 
-        this.handleWinLose(); 
+    }
+
+    private shootProjectile(startX: number, startY: number, endX: number, endY: number, onComplete: () => void) {
+        const spit = this.add.circle(startX, startY, 15, 0xffffff);
+        spit.setDepth(50); 
+
+        this.tweens.add({
+            targets: spit,
+            x: endX,
+            y: endY,
+            duration: 200, 
+            ease: 'Power1',
+            onComplete: () => {
+                spit.destroy(); 
+                onComplete();   
+            }
+        });
     }
 
     endPlayerTurn() {
         BattleManager.endPlayerTurn(); 
         this.turnText.setText('적 턴...');
+        this.endTurnButton.setText('적 턴...');
         
         this.time.delayedCall(1000, () => {
             this.processEnemyTurn();
@@ -261,11 +287,10 @@ export default class BattleScene extends Phaser.Scene {
         
         this.tweens.add({ targets: this.enemySprite, x: this.enemySprite.x - 30, yoyo: true, duration: 100 });
         
-        // 💡 적의 공격을 방어도로 막았을 때
         if (result.blockedDamage > 0) {
             this.sound.play('shieldblock');
         }
-        // 💡 적의 공격이 내 체력을 깎았을 때 (방어도를 뚫었거나 방어도가 없을 때)
+        
         if (result.damageDealt > 0) {
             this.sound.play('hit'); 
             this.showFloatingText(this.playerSprite.x, this.playerSprite.y - 100, `-${result.damageDealt}`, 0xff0000);
@@ -277,6 +302,7 @@ export default class BattleScene extends Phaser.Scene {
             this.time.delayedCall(1000, () => {
                 BattleManager.startNextTurn();
                 this.turnText.setText('플레이어 턴');
+                this.endTurnButton.setText(`${GameState.floor}층 턴 종료`); 
                 this.updateUI();
                 this.renderHand(true); 
             });
@@ -318,12 +344,18 @@ export default class BattleScene extends Phaser.Scene {
     updateUI() {
         const hpBarWidth = 240;
 
-        this.playerHpText.setText(`${GameState.player.hp} / ${GameState.player.maxHp}`);
+        this.topBar.refresh({
+            hp: GameState.player.hp,
+            maxHp: GameState.player.maxHp,
+            floor: GameState.floor
+        });
+
+        this.playerHpText.setText(`${GameState.player.hp}/${GameState.player.maxHp}`);
         const playerHpPercent = Math.max(0, GameState.player.hp / GameState.player.maxHp);
         this.playerHpBarFill.width = hpBarWidth * playerHpPercent;
         this.playerHpBarFill.fillColor = GameState.player.block > 0 ? 0x00aaff : 0xff0000;
 
-        this.enemyHpText.setText(`${GameState.enemy.hp} / ${GameState.enemy.maxHp}`);
+        this.enemyHpText.setText(`${GameState.enemy.hp}/${GameState.enemy.maxHp}`);
         const enemyHpPercent = Math.max(0, GameState.enemy.hp / GameState.enemy.maxHp);
         this.enemyHpBarFill.width = hpBarWidth * enemyHpPercent;
         this.enemyHpBarFill.fillColor = GameState.enemy.block > 0 ? 0x00aaff : 0xff0000;
@@ -336,8 +368,7 @@ export default class BattleScene extends Phaser.Scene {
         } else {
             this.blockContainer.setVisible(false);
         }
-
-        this.enemyIntentText.setText(`의도: 공격(${GameState.enemy.intent?.value})`);
+        this.enemyIntentText.setText(`의도:공격(${GameState.enemy.intent?.value})`);
     }
 
     showFloatingText(x: number, y: number, message: string, color: number) {
@@ -347,5 +378,68 @@ export default class BattleScene extends Phaser.Scene {
         text.setTint(color);
         
         this.tweens.add({ targets: text, y: y - 100, alpha: 0, duration: 1000, ease: 'Power1', onComplete: () => text.destroy() });
+    }
+
+    private openDeckModal() {
+        const modal = new Modal({
+            scene: this, title: `내 덱 (총 ${GameState.masterDeck.length}장)`,
+            width: 1800, height: 1200
+        });
+
+        const content = modal.contentContainer;
+        const cols = 6;
+        const cardScale = 0.8;
+        const cellW = 270 * cardScale + 30;
+        const cellH = 390 * cardScale + 40;
+        const startX = -((cols - 1) * cellW) / 2;
+        const startY = -400;
+
+        GameState.masterDeck.forEach((cardData, index) => {
+            const col = index % cols;
+            const row = Math.floor(index / cols);
+            const cardView = this.createVisualCardHelper(0, 0, cardData);
+            cardView.setScale(cardScale);
+            const cardWrapper = this.add.container(startX + (col * cellW), startY + (row * cellH), [cardView]);
+            content.add(cardWrapper);
+        });
+    }
+
+    private createVisualCardHelper(x: number, y: number, cardData: ICardData): Phaser.GameObjects.Container {
+        const cardWidth = 260;
+        const cardHeight = 380;
+        const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
+        bg.setStrokeStyle(6, 0xffffff);
+        const nameText = this.add.text(0, -130, cardData.name, { fontSize: '38px', color: '#000', fontStyle: 'bold' }).setOrigin(0.5);
+        const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
+        const costText = this.add.text(-90, -145, cardData.cost.toString(), { fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8 }).setOrigin(0.5);
+        const descText = this.add.text(0, 20, cardData.desc, { fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 } }).setOrigin(0.5);
+        return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
+    }
+
+    private openSettingsModal() {
+        const modal = new Modal({
+            scene: this, title: '환경 설정', width: 800, height: 600
+        });
+
+        const content = modal.contentContainer;
+        const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold'
+        }).setOrigin(0.5);
+        content.add(modeText);
+
+        const autoBtn = new Button({
+            scene: this, x: -220, y: 50, text: '자동 감지', variant: 'secondary', width: 180, height: 60, fontSize: '28px',
+            onClick: () => { SettingsManager.setForceUIMode('auto'); modeText.setText(`현재 UI 모드: auto`); }
+        });
+        const pcBtn = new Button({
+            scene: this, x: 0, y: 50, text: 'PC 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
+            onClick: () => { SettingsManager.setForceUIMode('pc'); modeText.setText(`현재 UI 모드: pc`); }
+        });
+        const mobileBtn = new Button({
+            scene: this, x: 220, y: 50, text: '모바일 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
+            onClick: () => { SettingsManager.setForceUIMode('mobile'); modeText.setText(`현재 UI 모드: mobile`); }
+        });
+
+        content.add([autoBtn, pcBtn, mobileBtn]);
     }
 }
