@@ -16,8 +16,8 @@ const config: Phaser.Types.Core.GameConfig = {
         parent: 'app',
         autoCenter: Phaser.Scale.CENTER_BOTH,
         // 💡 핵심: 고정된 숫자를 지우고, 접속한 기기의 화면 크기에 맞게 동적 할당
-        width: window.innerWidth,
-        height: window.innerHeight
+        width: 1920,
+        height: 1080
     },
 
     
