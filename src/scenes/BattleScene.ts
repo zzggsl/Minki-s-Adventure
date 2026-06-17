@@ -75,7 +75,6 @@ export default class BattleScene extends Phaser.Scene {
             onSettingsClick: () => this.openSettingsModal()
         });
 
-        // 💡 100% 개발자님 커스텀 코드가 반영된 함수 호출
         this.createActors();
         
         this.endTurnButton = new Button({
@@ -118,7 +117,7 @@ export default class BattleScene extends Phaser.Scene {
         this.renderHand(true); 
     }
 
-    // 💡 개발자님이 직접 수정하신 완벽한 createActors 함수 
+    // 💡 개발자님이 맞추신 완벽한 비율 + 픽셀 오프셋 유지
     createActors() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -131,7 +130,7 @@ export default class BattleScene extends Phaser.Scene {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
-            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items); // 💡 반영됨
+            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items);
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -153,7 +152,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
-            this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items); // 💡 반영됨
+            this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items);
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 

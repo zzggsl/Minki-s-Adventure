@@ -1,5 +1,5 @@
 // 게임 전체에서 쓰이는 타입들을 정의합니다.
-export type CardType = 'ATTACK' | 'DEFEND' | 'SKILL';
+export type CardType = 'ATTACK' | 'DEFEND' | 'SKILL' | 'POWER' | string;
 
 export interface ICardData {
     id: string;
@@ -7,7 +7,9 @@ export interface ICardData {
     cost: number;
     desc: string;
     type: CardType;
-    value: number; // 데미지 또는 방어도 수치
+    value?: number;  // 기존의 범용 수치
+    damage?: number; // 💡 카드의 공격력
+    block?: number;  // 💡 카드의 방어도
 }
 
 export interface ICharacter {
@@ -16,6 +18,5 @@ export interface ICharacter {
     mana?: number;
     maxMana?: number;
     intent?: { type: string; value: number };
-    damage?: number; 
-    block?: number; 
+    block: number; // 💡 캐릭터는 현재 쌓인 방어도 수치가 필수입니다.
 }

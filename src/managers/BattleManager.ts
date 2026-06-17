@@ -6,13 +6,13 @@ export interface PlayCardResult {
     success: boolean;
     reason?: string;
     damageDealt: number;
-    blockedDamage: number; // 💡 추가됨
+    blockedDamage: number;
     blockGained: number;
 }
 
 export interface EnemyTurnResult {
     damageDealt: number;
-    blockedDamage: number; // 💡 추가됨
+    blockedDamage: number; 
 }
 
 export class BattleManager {
@@ -37,11 +37,14 @@ export class BattleManager {
         let blockGained = 0;
 
         if (cardData.type === 'ATTACK') {
-            const result = this.applyDamage(GameState.enemy, cardData.value);
+            // 💡 수정된 타입 인터페이스 반영 (damage 우선 확인)
+            const dmg = cardData.damage || cardData.value || 0;
+            const result = this.applyDamage(GameState.enemy, dmg);
             damageDealt = result.damageDealt;
             blockedDamage = result.blockedDamage;
-        } else if (cardData.type === 'DEFEND') {
-            blockGained = cardData.value;
+        } else if (cardData.type === 'SKILL' || cardData.type === 'DEFEND') {
+            // 💡 방어도 부여 처리 (block 우선 확인)
+            blockGained = cardData.block || cardData.value || 0;
             GameState.player.block += blockGained;
         }
 
@@ -50,16 +53,16 @@ export class BattleManager {
     }
 
     static endPlayerTurn() {
-        GameState.turn = 'animating';
         DeckSystem.discardHand();
+        GameState.turn = 'enemy';
     }
 
     static processEnemyTurn(): EnemyTurnResult {
-        const intent = GameState.enemy.intent!;
         let damageDealt = 0;
         let blockedDamage = 0;
 
-        if (intent.type === 'attack') {
+        const intent = GameState.enemy.intent;
+        if (intent && intent.type === 'attack') {
             const result = this.applyDamage(GameState.player, intent.value);
             damageDealt = result.damageDealt;
             blockedDamage = result.blockedDamage;
@@ -83,7 +86,6 @@ export class BattleManager {
         return 'continue';
     }
 
-    // 💡 방어도로 막아낸 수치(blockedDamage)도 함께 반환하도록 수정
     private static applyDamage(target: ICharacter, amount: number): { damageDealt: number, blockedDamage: number } {
         let actualDamage = amount;
         let blockedDamage = 0;
@@ -97,11 +99,12 @@ export class BattleManager {
             target.hp -= actualDamage;
         }
         if (target.hp < 0) target.hp = 0;
-        
-        return { damageDealt: actualDamage, blockedDamage }; 
+
+        return { damageDealt: actualDamage, blockedDamage };
     }
 
     private static generateEnemyIntent() {
-        GameState.enemy.intent = { type: 'attack', value: Math.floor(Math.random() * 5) + 5 };
+        // 임시 의도 생성 로직
+        GameState.enemy.intent = { type: 'attack', value: Phaser.Math.Between(5, 15) };
     }
 }
