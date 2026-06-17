@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
 
-// 💡 다중 툴팁을 받기 위한 인터페이스
 export interface TooltipItem {
     title: string;
     desc: string;
-    iconKey?: string; // 💡 추가: 아이콘 스프라이트 키
+    iconKey?: string; 
 }
 
 export class Tooltip extends Phaser.GameObjects.Container {
@@ -14,62 +13,60 @@ export class Tooltip extends Phaser.GameObjects.Container {
     constructor(scene: Phaser.Scene) {
         super(scene, 0, 0);
 
-        // 1. 툴팁 배경
-        this.bg = scene.add.rectangle(0, 0, 450, 200, 0x111111, 0.95);
+        // 💡 툴팁 너비를 450 -> 480으로 살짝 넓혀서 글자가 더 편하게 보이도록 수정
+        this.bg = scene.add.rectangle(0, 0, 480, 200, 0x111111, 0.95);
         this.bg.setStrokeStyle(4, 0x555555);
         this.bg.setOrigin(0, 0); 
 
-        // 2. 텍스트들을 담을 내부 그릇
         this.contentContainer = scene.add.container(0, 0);
 
-        // 3. 조립 및 초기화
         this.add([this.bg, this.contentContainer]);
         this.setVisible(false);
-        this.setDepth(2000); // 💡 다른 어떤 UI보다 무조건 최상단
+        this.setDepth(2000); 
         scene.add.existing(this);
     }
 
-    /**
-     * 여러 개의 툴팁 아이템을 받아서 화면에 렌더링합니다.
-     */
-        public show(x: number, y: number, items: TooltipItem[]) {
+    public show(x: number, y: number, items: TooltipItem[]) {
         if (items.length === 0) return;
 
         this.contentContainer.removeAll(true);
         let currentY = 20;
 
         items.forEach(item => {
-            const elements: Phaser.GameObjects.GameObject[] = []; // 💡 컨테이너에 담을 요소들
+            const elements: Phaser.GameObjects.GameObject[] = []; 
 
-            // 💡 1. 아이콘이 있다면 생성해서 elements 배열에 담기
             if (item.iconKey) {
-                const icon = this.scene.add.sprite(40, currentY + 20, item.iconKey).setScale(0.1).setOrigin(0.5);
+                const icon = this.scene.add.sprite(40, currentY + 25, item.iconKey).setScale(0.1).setOrigin(0.5);
                 elements.push(icon);
             }
 
-            // 💡 2. 타이틀 텍스트 담기
             const titleText = this.scene.add.text(item.iconKey ? 70 : 25, currentY, item.title, {
                 fontSize: '32px', color: '#ffdd00', fontStyle: 'bold',
                 stroke: '#000000', strokeThickness: 4,
                 padding: { top: 5, bottom: 5 }
             });
+            
+            // 💡 핵심 수정: 강제로 렌더링을 업데이트하여 정확한 높이를 즉시 가져옴
+            titleText.updateText();
             currentY += titleText.height;
             elements.push(titleText);
 
-            // 💡 3. 설명 텍스트 담기
             const descText = this.scene.add.text(25, currentY, item.desc, {
-                fontSize: '26px', color: '#ffffff', wordWrap: { width: 400 },
-                lineSpacing: 8,
+                fontSize: '26px', color: '#ffffff', 
+                wordWrap: { width: 420 }, // 💡 넓어진 배경에 맞춰 랩핑 너비 증가
+                lineSpacing: 10,
                 padding: { top: 5, bottom: 5 }
             });
-            currentY += descText.height + 15;
+            
+            // 💡 핵심 수정: 줄바꿈이 적용된 실제 높이를 강제로 다시 계산
+            descText.updateText();
+            currentY += descText.height + 30; // 💡 다음 툴팁과의 간격을 30으로 넉넉하게 추가
             elements.push(descText);
 
-            // 💡 4. 생성된 모든 요소(아이콘 포함)를 컨테이너에 쏙 넣기! (이제 유령 안 남음)
             this.contentContainer.add(elements);
         });
 
-        this.bg.height = currentY + 5;
+        this.bg.height = currentY + 10;
 
         let targetX = x;
         let targetY = y;
