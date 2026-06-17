@@ -32,46 +32,53 @@ export class Tooltip extends Phaser.GameObjects.Container {
     /**
      * 여러 개의 툴팁 아이템을 받아서 화면에 렌더링합니다.
      */
-    public show(x: number, y: number, items: TooltipItem[]) {
+        public show(x: number, y: number, items: TooltipItem[]) {
         if (items.length === 0) return;
 
         this.contentContainer.removeAll(true);
         let currentY = 20;
 
         items.forEach(item => {
+            const elements: Phaser.GameObjects.GameObject[] = []; // 💡 컨테이너에 담을 요소들
+
+            // 💡 1. 아이콘이 있다면 생성해서 elements 배열에 담기
             if (item.iconKey) {
-                this.scene.add.sprite(40, currentY + 15, item.iconKey).setScale(0.1).setOrigin(0.5);
+                const icon = this.scene.add.sprite(40, currentY + 20, item.iconKey).setScale(0.1).setOrigin(0.5);
+                elements.push(icon);
             }
+
+            // 💡 2. 타이틀 텍스트 담기
             const titleText = this.scene.add.text(item.iconKey ? 70 : 25, currentY, item.title, {
                 fontSize: '32px', color: '#ffdd00', fontStyle: 'bold',
                 stroke: '#000000', strokeThickness: 4,
                 padding: { top: 5, bottom: 5 }
             });
-            // 💡 수정됨: titleText의 패딩이 이미 있으므로 추가 높이를 뺌
-            currentY += titleText.height; 
+            currentY += titleText.height;
+            elements.push(titleText);
 
+            // 💡 3. 설명 텍스트 담기
             const descText = this.scene.add.text(25, currentY, item.desc, {
                 fontSize: '26px', color: '#ffffff', wordWrap: { width: 400 },
                 lineSpacing: 8,
                 padding: { top: 5, bottom: 5 }
             });
-            // 💡 수정됨: 아이템 간 간격을 15px로 타이트하게 조절
-            currentY += descText.height + 15; 
+            currentY += descText.height + 15;
+            elements.push(descText);
 
-            this.contentContainer.add([titleText, descText]);
+            // 💡 4. 생성된 모든 요소(아이콘 포함)를 컨테이너에 쏙 넣기! (이제 유령 안 남음)
+            this.contentContainer.add(elements);
         });
 
-        // 💡 수정됨: 배경 사각형의 불필요한 아래 여백 완벽 제거
         this.bg.height = currentY + 5;
 
-        // 💡 수정됨: 고정 위치를 사용할 것이므로 마우스 오프셋(+20) 제거
         let targetX = x;
         let targetY = y;
         const screenW = this.scene.cameras.main.width;
         const screenH = this.scene.cameras.main.height;
 
-        if (targetX + this.bg.width > screenW) targetX = screenW - this.bg.width - 20;
-        if (targetY + this.bg.height > screenH) targetY = screenH - this.bg.height - 20;
+        const margin = 20;
+        if (targetX + this.bg.width > screenW) targetX = screenW - this.bg.width - margin;
+        if (targetY + this.bg.height > screenH) targetY = screenH - this.bg.height - margin;
 
         this.setPosition(targetX, targetY);
         this.setVisible(true);
