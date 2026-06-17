@@ -26,7 +26,6 @@ export default class BattleScene extends Phaser.Scene {
 
     private drawPileBtn!: Button;
     private discardPileBtn!: Button;
-
     private turnCount: number = 1;
 
     playerSprite!: Phaser.GameObjects.Sprite;
@@ -40,16 +39,24 @@ export default class BattleScene extends Phaser.Scene {
     enemySprite!: Phaser.GameObjects.Sprite;
     enemyHpText!: Phaser.GameObjects.Text;
     enemyHpBarFill!: Phaser.GameObjects.Rectangle; 
-    
-    // 💡 변수 선언부: 여기서 빠지면 주황줄/빨간줄이 생깁니다!
     enemyIntentText!: Phaser.GameObjects.Text;
     enemyIntentIcon!: Phaser.GameObjects.Sprite; 
     
     turnText!: Phaser.GameObjects.Text;
     cardContainers: Phaser.GameObjects.Container[] = [];
 
+    // 💡 모바일 터치 UX를 위한 '현재 선택된 카드' 상태 저장소
+    private selectedCard: { container: Phaser.GameObjects.Container, data: ICardData, index: number, startPos: any } | null = null;
+
     constructor() {
         super({ key: 'BattleScene' });
+    }
+
+    // 💡 기기 모드 판별 헬퍼 (SettingsManager와 연동)
+    private get isMobileMode(): boolean {
+        if (SettingsManager.settings.forceUIMode === 'mobile') return true;
+        if (SettingsManager.settings.forceUIMode === 'pc') return false;
+        return this.sys.game.device.os.android || this.sys.game.device.os.iOS || this.sys.game.device.os.iPad;
     }
 
     create() {
@@ -67,29 +74,43 @@ export default class BattleScene extends Phaser.Scene {
         this.createActors();
         
         this.endTurnButton = new Button({
-            scene: this, x: width - 200, y: height / 1.2,
-            text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
+            scene: this, x: width - 200, y: height / 1.2, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
             onClick: () => { if (GameState.turn === 'player') this.endPlayerTurn(); }
         });
 
         this.drawPileBtn = new Button({
-            scene: this, x: 150, y: height - 80,
-            text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: 150, y: height - 80, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
             onClick: () => this.openPileModal('뽑을 카드 더미', GameState.deck || [])
         });
 
         this.discardPileBtn = new Button({
-            scene: this, x: width - 150, y: height - 80,
-            text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: width - 150, y: height - 80, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
             onClick: () => this.openPileModal('버린 카드 더미', GameState.discard || [])
         });
         
-        this.turnText = this.add.text(width / 2, 120, '', { 
-            fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } 
-        }).setOrigin(0.5);
+        this.turnText = this.add.text(width / 2, 120, '', { fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
         
-        EventBus.on('hand-updated', () => this.renderHand(false), this);
+        // 💡 바탕화면 터치 감지 (모바일 환경에서 탭으로 카드 사용 / 취소)
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
+            if (GameState.turn !== 'player' || !this.isMobileMode) return;
 
+            const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
+            
+            if (!clickedCard && this.selectedCard) {
+                // 카드가 아닌 다른 곳을 눌렀을 때
+                if (pointer.y < height - 450) {
+                    // 위쪽이나 적을 터치하면 카드 쓩! 사용
+                    this.playCard(this.selectedCard.data, this.selectedCard.index, this.selectedCard.container);
+                    this.selectedCard = null;
+                    this.tooltip.hide();
+                } else {
+                    // 아래쪽 빈 공간을 터치하면 선택 취소
+                    this.deselectCard(true);
+                }
+            }
+        });
+
+        EventBus.on('hand-updated', () => this.renderHand(false), this);
         BattleManager.startBattle();
         this.updateUI();
         this.turnText.setText('플레이어 턴');
@@ -102,14 +123,12 @@ export default class BattleScene extends Phaser.Scene {
         const hpBarWidth = 240;
         const hpBarHeight = 30;
 
-        // 플레이어 (크기 0.32 축소 유지)
         this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player').setScale(0.32).setInteractive(); 
-        
         this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
-            this.tooltip.show(this.playerSprite.x + 100, this.playerSprite.y - 100, items); // 우측
+            this.tooltip.show(this.playerSprite.x + 100, this.playerSprite.y - 100, items); 
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -126,13 +145,12 @@ export default class BattleScene extends Phaser.Scene {
         this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        // 적
         this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha').setScale(0.45).setInteractive();
         
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
-            this.tooltip.show(this.enemySprite.x - 480, this.enemySprite.y - 100, items); // 좌측
+            this.tooltip.show(this.enemySprite.x - 480, this.enemySprite.y - 100, items); 
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 
@@ -140,7 +158,6 @@ export default class BattleScene extends Phaser.Scene {
         this.enemyHpBarFill = this.add.rectangle(width * 0.8 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5);
         this.enemyHpText = this.add.text(width * 0.8, height * 0.5 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
         
-        // 💡 적 의도 아이콘 & 텍스트 (괄호 없이 숫자만 표시되도록 조립)
         this.enemyIntentIcon = this.add.sprite(width * 0.8 - 20, height * 0.5 - 250, 'swordicon').setScale(0.1).setOrigin(1, 0.5);
         this.enemyIntentText = this.add.text(width * 0.8, height * 0.5 - 250, '', { fontSize: '44px', color: '#ffaaaa', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0, 0.5);
     }
@@ -148,12 +165,13 @@ export default class BattleScene extends Phaser.Scene {
     renderHand(animate: boolean = false) {
         this.cardContainers.forEach(container => container.destroy());
         this.cardContainers = [];
+        this.selectedCard = null; // 💡 패가 다시 그려지면 선택 상태도 초기화
 
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         const handSize = GameState.hand.length;
         
-        const cardSpacing = 220; 
+        const cardSpacing = Math.min(220, width / (handSize + 1)); // 💡 해상도가 좁을 때 겹침 방지 보정
         const startX = (width / 2) - ((handSize - 1) * cardSpacing) / 2;
 
         GameState.hand.forEach((cardData, index) => {
@@ -183,44 +201,39 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.setAngle(angle); 
         
         if (animate) {
-            // 좌측 하단(덱 위치)에서 드로우 연출
             cardContainer.setPosition(150, this.cameras.main.height - 80);
             cardContainer.setAngle(0);
             cardContainer.setScale(0.1);
-
-            this.tweens.add({
-                targets: cardContainer,
-                x: x, y: y, angle: angle, scale: 1, delay: delayIndex * 150, duration: 400, ease: 'Back.easeOut',
-                onStart: () => { this.sound.play(`shuffle${Phaser.Math.Between(1, 7)}`); }
-            });
+            this.tweens.add({ targets: cardContainer, x: x, y: y, angle: angle, scale: 1, delay: delayIndex * 150, duration: 400, ease: 'Back.easeOut', onStart: () => { this.sound.play(`shuffle${Phaser.Math.Between(1, 7)}`); } });
         }
 
         cardContainer.setInteractive();
         this.input.setDraggable(cardContainer);
         const startPos = { x, y, angle };
 
-        cardContainer.on('pointerover', () => {
+        // 💡 모바일 탭 (단일 터치) 선택 로직
+        cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
+            if (this.isMobileMode) {
+                if (this.selectedCard?.container === cardContainer) {
+                    this.deselectCard(true); // 다시 누르면 선택 해제
+                } else {
+                    this.selectCard(cardContainer, cardData, handIndex, startPos);
+                }
+            }
+        });
+
+        cardContainer.on('pointerover', () => {
+            if (GameState.turn !== 'player' || this.isMobileMode) return; // 💡 PC 마우스 호버 전용
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
             this.sound.play('click'); 
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
-
-            const tooltipItems: TooltipItem[] = [];
-            for (const [keyword, description] of Object.entries(KEYWORD_DICT)) {
-                if (cardData.desc.includes(keyword) || cardData.name.includes(keyword)) {
-                    // 키워드에 따라 알맞은 아이콘 부여
-                    let iconKey = undefined;
-                    if (keyword === '방어도') iconKey = 'shieldicon';
-                    if (keyword === '독' || keyword === '힘' || keyword === '취약' || keyword === '약화') iconKey = 'swordicon'; 
-                    tooltipItems.push({ title: keyword, desc: description, iconKey });
-                }
-            }
-            if (tooltipItems.length > 0) this.tooltip.show(cardContainer.x + 160, cardContainer.y - 300, tooltipItems); // 우상단
+            this.showCardTooltip(cardContainer, cardData);
         });
 
         cardContainer.on('pointerout', () => {
-            if (GameState.turn !== 'player') return;
+            if (GameState.turn !== 'player' || this.isMobileMode) return; 
             bg.setStrokeStyle(6, 0xffffff);
             this.tweens.add({ targets: cardContainer, y: startPos.y, scale: 1, angle: startPos.angle, duration: 100 });
             this.tooltip.hide();
@@ -229,7 +242,13 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.on('dragstart', () => {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer); 
-            this.tooltip.hide(); 
+            this.tooltip.hide(); // 드래그 시 시야 확보를 위해 툴팁 숨김
+
+            // 모바일에서 선택하지 않고 바로 드래그할 경우 자연스럽게 선택 상태로 취급
+            if (this.isMobileMode && this.selectedCard?.container !== cardContainer) {
+                this.selectCard(cardContainer, cardData, handIndex, startPos);
+                this.tooltip.hide(); 
+            }
         });
 
         cardContainer.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
@@ -245,15 +264,62 @@ export default class BattleScene extends Phaser.Scene {
 
             if (cardContainer.y < this.cameras.main.height - 450) {
                 this.playCard(cardData, handIndex, cardContainer); 
+                this.selectedCard = null; // 사용 성공 시 초기화
+                this.tooltip.hide();
             } else {
                 this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
+                if (this.isMobileMode) this.selectedCard = null; // 제자리로 돌려놓으면 선택 해제
             }
         });
 
         this.cardContainers.push(cardContainer);
     }
 
-    // 포물선 버림 연출
+    // 💡 카드 팝업 (선택) 처리 함수
+    private selectCard(container: Phaser.GameObjects.Container, cardData: ICardData, index: number, startPos: any) {
+        if (this.selectedCard) this.deselectCard(true); // 기존 선택 카드 원상복구
+        
+        this.selectedCard = { container, data: cardData, index, startPos };
+        this.children.bringToTop(container);
+        this.sound.play('click');
+        
+        const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
+        bg.setStrokeStyle(8, 0xffff00);
+        
+        this.tweens.add({ targets: container, y: startPos.y - 150, scale: 1.2, angle: 0, duration: 150 });
+        this.showCardTooltip(container, cardData);
+    }
+
+    // 💡 카드 선택 취소 처리 함수
+    private deselectCard(animateBack: boolean) {
+        if (!this.selectedCard) return;
+        
+        const { container, startPos } = this.selectedCard;
+        const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
+        bg.setStrokeStyle(6, 0xffffff);
+        
+        if (animateBack) {
+            this.tweens.add({ targets: container, x: startPos.x, y: startPos.y, scale: 1, angle: startPos.angle, duration: 150 });
+        }
+        
+        this.selectedCard = null;
+        this.tooltip.hide();
+    }
+
+    // 💡 카드 툴팁 헬퍼 함수
+    private showCardTooltip(cardContainer: Phaser.GameObjects.Container, cardData: ICardData) {
+        const tooltipItems: TooltipItem[] = [];
+        for (const [keyword, description] of Object.entries(KEYWORD_DICT)) {
+            if (cardData.desc.includes(keyword) || cardData.name.includes(keyword)) {
+                let iconKey = undefined;
+                if (keyword === '방어도') iconKey = 'shieldicon';
+                if (keyword === '독' || keyword === '힘' || keyword === '취약' || keyword === '약화') iconKey = 'swordicon'; 
+                tooltipItems.push({ title: keyword, desc: description, iconKey });
+            }
+        }
+        if (tooltipItems.length > 0) this.tooltip.show(cardContainer.x + 160, cardContainer.y - 300, tooltipItems); 
+    }
+
     private discardCardAnim(container: Phaser.GameObjects.Container, delay: number = 0) {
         const discardX = this.cameras.main.width - 150; 
         const discardY = this.cameras.main.height - 80; 
@@ -262,20 +328,12 @@ export default class BattleScene extends Phaser.Scene {
         this.children.bringToTop(container);
         this.tooltip.hide();
 
-        this.tweens.add({
-            targets: container, x: discardX, scale: 0.1, angle: 180 + Phaser.Math.Between(-90, 90), alpha: 0, delay: delay, duration: 500, ease: 'Sine.easeInOut',
-            onComplete: () => container.destroy() 
-        });
-
-        this.tweens.add({
-            targets: container, y: container.y - 300, delay: delay, duration: 250, ease: 'Quad.easeOut',
-            onComplete: () => { this.tweens.add({ targets: container, y: discardY, duration: 250, ease: 'Quad.easeIn' }); }
-        });
+        this.tweens.add({ targets: container, x: discardX, scale: 0.1, angle: 180 + Phaser.Math.Between(-90, 90), alpha: 0, delay: delay, duration: 500, ease: 'Sine.easeInOut', onComplete: () => container.destroy() });
+        this.tweens.add({ targets: container, y: container.y - 300, delay: delay, duration: 250, ease: 'Quad.easeOut', onComplete: () => { this.tweens.add({ targets: container, y: discardY, duration: 250, ease: 'Quad.easeIn' }); } });
     }
 
     playCard(cardData: ICardData, handIndex: number, cardContainer: Phaser.GameObjects.Container) {
         this.cardContainers = this.cardContainers.filter(c => c !== cardContainer);
-
         const result = BattleManager.playCard(cardData, handIndex);
 
         if (!result.success) {
@@ -312,17 +370,13 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     private shootProjectile(startX: number, startY: number, endX: number, endY: number, onComplete: () => void) {
-        const spit = this.add.circle(startX, startY, 15, 0xffffff);
-        spit.setDepth(50); 
+        const spit = this.add.circle(startX, startY, 15, 0xffffff).setDepth(50); 
         this.tweens.add({ targets: spit, x: endX, y: endY, duration: 200, ease: 'Power1', onComplete: () => { spit.destroy(); onComplete(); } });
     }
 
     endPlayerTurn() {
-        this.cardContainers.forEach((container, idx) => {
-            this.discardCardAnim(container, idx * 80); 
-        });
+        this.cardContainers.forEach((container, idx) => { this.discardCardAnim(container, idx * 80); });
         this.cardContainers = []; 
-
         BattleManager.endPlayerTurn(); 
         this.turnText.setText('적 턴...');
         this.endTurnButton.setText('적 턴...');
@@ -354,49 +408,36 @@ export default class BattleScene extends Phaser.Scene {
 
     handleWinLose(): boolean {
         const status = BattleManager.checkWinLose();
-
         if (status === 'win') {
             GameState.turn = 'animating';
             this.turnText.setText('전투 승리!');
             this.enemySprite.setAlpha(0.2);
-            this.time.delayedCall(1000, () => {
-                GameState.floor += 1; 
-                GameState.enemy.hp = GameState.enemy.maxHp; 
-                this.scene.start('RewardScene'); 
-            });
+            this.time.delayedCall(1000, () => { GameState.floor += 1; GameState.enemy.hp = GameState.enemy.maxHp; this.scene.start('RewardScene'); });
             return true;
         }
-        
         if (status === 'lose') {
             GameState.turn = 'animating';
             this.turnText.setText('게임 오버');
             this.playerSprite.setAlpha(0.2);
             SaveSystem.clearSave(); 
-            this.time.delayedCall(2000, () => {
-                GameState.masterDeck = []; 
-                this.scene.start('MenuScene'); 
-            });
+            this.time.delayedCall(2000, () => { GameState.masterDeck = []; this.scene.start('MenuScene'); });
             return true;
         }
-
         return false;
     }
 
     updateUI() {
         this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
-
         this.drawPileBtn.setText(`덱: ${GameState.deck?.length || 0}장`);
         this.discardPileBtn.setText(`버림: ${GameState.discard?.length || 0}장`);
 
         const hpBarWidth = 240;
         this.playerHpText.setText(`${GameState.player.hp}/${GameState.player.maxHp}`);
-        const playerHpPercent = Math.max(0, GameState.player.hp / GameState.player.maxHp);
-        this.playerHpBarFill.width = hpBarWidth * playerHpPercent;
+        this.playerHpBarFill.width = hpBarWidth * Math.max(0, GameState.player.hp / GameState.player.maxHp);
         this.playerHpBarFill.fillColor = GameState.player.block > 0 ? 0x00aaff : 0xff0000;
 
         this.enemyHpText.setText(`${GameState.enemy.hp}/${GameState.enemy.maxHp}`);
-        const enemyHpPercent = Math.max(0, GameState.enemy.hp / GameState.enemy.maxHp);
-        this.enemyHpBarFill.width = hpBarWidth * enemyHpPercent;
+        this.enemyHpBarFill.width = hpBarWidth * Math.max(0, GameState.enemy.hp / GameState.enemy.maxHp);
         this.enemyHpBarFill.fillColor = GameState.enemy.block > 0 ? 0x00aaff : 0xff0000;
         
         this.manaText.setText(`${GameState.player.mana}/${GameState.player.maxMana}`);
@@ -408,7 +449,6 @@ export default class BattleScene extends Phaser.Scene {
             this.blockContainer.setVisible(false);
         }
         
-        // 💡 적 의도 아이콘 동적 갱신
         if (GameState.enemy.intent) {
             this.enemyIntentText.setText(`${GameState.enemy.intent.value}`);
             this.enemyIntentIcon.setVisible(true);

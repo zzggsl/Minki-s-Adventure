@@ -11,19 +11,18 @@ SettingsManager.loadSettings(); // 💡 추가
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: 2360,
-    height: 1640,
-    parent: document.body,
-    
     scale: {
         mode: Phaser.Scale.FIT,
+        parent: 'app',
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        autoDensity: true,
-        resolution: window.devicePixelRatio || 1
-    } as any,
+        // 💡 핵심: 고정된 숫자를 지우고, 접속한 기기의 화면 크기에 맞게 동적 할당
+        width: window.innerWidth,
+        height: window.innerHeight
+    },
+
     
     // 💡 scene 배열의 맨 앞(가장 먼저 실행됨)에 MenuScene을 배치합니다!
     scene: [PreloadScene, MenuScene, MapScene, BattleScene, RewardScene] 
 };
 
-new Phaser.Game(config);
+export default new Phaser.Game(config);
