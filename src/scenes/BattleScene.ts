@@ -117,7 +117,6 @@ export default class BattleScene extends Phaser.Scene {
         this.renderHand(true); 
     }
 
-    // 💡 개발자님이 맞추신 완벽한 비율 + 픽셀 오프셋 유지
     createActors() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -128,7 +127,7 @@ export default class BattleScene extends Phaser.Scene {
         this.playerSprite = this.add.sprite(width * 0.25, height * 0.45, 'player').setScale(0.32).setInteractive(); 
         this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
-            if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
+            if ((GameState.player.block || 0) > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
             this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items);
         });
@@ -151,7 +150,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemySprite = this.add.sprite(width * 0.75, height * 0.45, 'enemy_gunha').setScale(0.45).setInteractive();
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
-            if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
+            if (GameState.enemy?.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
             this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items);
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
@@ -171,19 +170,21 @@ export default class BattleScene extends Phaser.Scene {
 
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-        const handSize = GameState.hand.length;
+        const handSize = GameState.hand?.length || 0;
         
         const cardSpacing = Math.min(220, (width * 0.6) / Math.max(1, handSize)); 
         const startX = (width * 0.5) - ((handSize - 1) * cardSpacing) / 2;
 
-        GameState.hand.forEach((cardData, index) => {
-            const offsetFromCenter = index - (handSize - 1) / 2;
-            const targetX = startX + (index * cardSpacing);
-            const targetY = height * 0.85 + Math.abs(offsetFromCenter) * 20; 
-            const targetAngle = offsetFromCenter * 5; 
+        if (GameState.hand) {
+            GameState.hand.forEach((cardData, index) => {
+                const offsetFromCenter = index - (handSize - 1) / 2;
+                const targetX = startX + (index * cardSpacing);
+                const targetY = height * 0.85 + Math.abs(offsetFromCenter) * 20; 
+                const targetAngle = offsetFromCenter * 5; 
 
-            this.createCardView(targetX, targetY, targetAngle, cardData, index, animate, index);
-        });
+                this.createCardView(targetX, targetY, targetAngle, cardData, index, animate, index);
+            });
+        }
     }
 
     createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number, animate: boolean, delayIndex: number) {
@@ -411,7 +412,7 @@ export default class BattleScene extends Phaser.Scene {
             GameState.turn = 'animating';
             this.turnText.setText('전투 승리!');
             this.enemySprite.setAlpha(0.2);
-            this.time.delayedCall(1000, () => { GameState.floor += 1; GameState.enemy.hp = GameState.enemy.maxHp; this.scene.start('RewardScene'); });
+            this.time.delayedCall(1000, () => { GameState.floor += 1; if(GameState.enemy) GameState.enemy.hp = GameState.enemy.maxHp; this.scene.start('RewardScene'); });
             return true;
         }
         if (status === 'lose') {
@@ -426,29 +427,32 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     updateUI() {
-        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
+        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor || 1 });
         this.drawPileBtn.setText(`덱: ${GameState.deck?.length || 0}장`);
         this.discardPileBtn.setText(`버림: ${GameState.discard?.length || 0}장`);
 
         const hpBarWidth = 240;
-        this.playerHpText.setText(`${GameState.player.hp}/${GameState.player.maxHp}`);
-        this.playerHpBarFill.width = hpBarWidth * Math.max(0, GameState.player.hp / GameState.player.maxHp);
-        this.playerHpBarFill.fillColor = GameState.player.block > 0 ? 0x00aaff : 0xff0000;
+        const pMaxHp = GameState.player.maxHp || 1;
+        this.playerHpText.setText(`${GameState.player.hp}/${pMaxHp}`);
+        this.playerHpBarFill.width = hpBarWidth * Math.max(0, GameState.player.hp / pMaxHp);
+        this.playerHpBarFill.fillColor = (GameState.player.block || 0) > 0 ? 0x00aaff : 0xff0000;
 
-        this.enemyHpText.setText(`${GameState.enemy.hp}/${GameState.enemy.maxHp}`);
-        this.enemyHpBarFill.width = hpBarWidth * Math.max(0, GameState.enemy.hp / GameState.enemy.maxHp);
-        this.enemyHpBarFill.fillColor = GameState.enemy.block > 0 ? 0x00aaff : 0xff0000;
+        const eMaxHp = GameState.enemy?.maxHp || 1;
+        const eHp = GameState.enemy?.hp || 0;
+        this.enemyHpText.setText(`${eHp}/${eMaxHp}`);
+        this.enemyHpBarFill.width = hpBarWidth * Math.max(0, eHp / eMaxHp);
+        this.enemyHpBarFill.fillColor = (GameState.enemy?.block || 0) > 0 ? 0x00aaff : 0xff0000;
         
-        this.manaText.setText(`${GameState.player.mana}/${GameState.player.maxMana}`);
+        this.manaText.setText(`${GameState.player.mana || 0}/${GameState.player.maxMana || 3}`);
         
-        if (GameState.player.block > 0) {
+        if ((GameState.player.block || 0) > 0) {
             this.blockContainer.setVisible(true);
-            this.blockText.setText(GameState.player.block.toString());
+            this.blockText.setText(GameState.player.block!.toString());
         } else {
             this.blockContainer.setVisible(false);
         }
         
-        if (GameState.enemy.intent) {
+        if (GameState.enemy?.intent) {
             this.enemyIntentText.setText(`${GameState.enemy.intent.value}`);
             this.enemyIntentIcon.setVisible(true);
         } else {

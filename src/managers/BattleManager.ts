@@ -18,34 +18,34 @@ export interface EnemyTurnResult {
 export class BattleManager {
     static startBattle() {
         DeckSystem.initializeBattleDeck(); 
-        GameState.player.mana = GameState.player.maxMana;
+        GameState.player.mana = GameState.player.maxMana || 3;
         GameState.player.block = 0;
-        GameState.enemy.block = 0;
+        if (GameState.enemy) GameState.enemy.block = 0; // 안전 장치
+        
         this.generateEnemyIntent();
         DeckSystem.drawCards(5);
         GameState.turn = 'player';
     }
 
     static playCard(cardData: ICardData, handIndex: number): PlayCardResult {
-        if (GameState.player.mana! < cardData.cost) {
+        const currentMana = GameState.player.mana || 0;
+        if (currentMana < cardData.cost) {
             return { success: false, reason: '마나 부족!', damageDealt: 0, blockedDamage: 0, blockGained: 0 };
         }
 
-        GameState.player.mana! -= cardData.cost;
+        GameState.player.mana = currentMana - cardData.cost;
         let damageDealt = 0;
         let blockedDamage = 0;
         let blockGained = 0;
 
         if (cardData.type === 'ATTACK') {
-            // 💡 수정된 타입 인터페이스 반영 (damage 우선 확인)
             const dmg = cardData.damage || cardData.value || 0;
             const result = this.applyDamage(GameState.enemy, dmg);
             damageDealt = result.damageDealt;
             blockedDamage = result.blockedDamage;
         } else if (cardData.type === 'SKILL' || cardData.type === 'DEFEND') {
-            // 💡 방어도 부여 처리 (block 우선 확인)
             blockGained = cardData.block || cardData.value || 0;
-            GameState.player.block += blockGained;
+            GameState.player.block = (GameState.player.block || 0) + blockGained;
         }
 
         DeckSystem.discardCard(handIndex);
@@ -73,9 +73,9 @@ export class BattleManager {
     }
 
     static startNextTurn() {
-        GameState.player.mana = GameState.player.maxMana;
+        GameState.player.mana = GameState.player.maxMana || 3;
         GameState.player.block = 0;
-        GameState.enemy.block = 0;
+        if (GameState.enemy) GameState.enemy.block = 0;
         DeckSystem.drawCards(5);
         GameState.turn = 'player';
     }
@@ -89,10 +89,11 @@ export class BattleManager {
     private static applyDamage(target: ICharacter, amount: number): { damageDealt: number, blockedDamage: number } {
         let actualDamage = amount;
         let blockedDamage = 0;
+        const currentBlock = target.block || 0;
 
-        if (target.block > 0) {
-            blockedDamage = Math.min(target.block, actualDamage);
-            target.block -= blockedDamage;
+        if (currentBlock > 0) {
+            blockedDamage = Math.min(currentBlock, actualDamage);
+            target.block = currentBlock - blockedDamage;
             actualDamage -= blockedDamage;
         }
         if (actualDamage > 0) {
@@ -104,7 +105,8 @@ export class BattleManager {
     }
 
     private static generateEnemyIntent() {
-        // 임시 의도 생성 로직
-        GameState.enemy.intent = { type: 'attack', value: Phaser.Math.Between(5, 15) };
+        if (GameState.enemy) {
+            GameState.enemy.intent = { type: 'attack', value: Phaser.Math.Between(5, 15) };
+        }
     }
 }

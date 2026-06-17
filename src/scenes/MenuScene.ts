@@ -11,6 +11,8 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     create() {
+        console.log("현재 모바일 UI 모드인가?", SettingsManager.isMobileUI(this));
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
@@ -20,14 +22,8 @@ export default class MenuScene extends Phaser.Scene {
         }).setOrigin(0.5);
         
         new Button({
-            scene: this,
-            x: width / 2,
-            y: height * 0.6,
-            text: '모험 시작',
-            variant: 'primary',
-            width: 300,
-            height: 100,
-            fontSize: '40px',
+            scene: this, x: width / 2, y: height * 0.6, text: '모험 시작', variant: 'primary',
+            width: 300, height: 100, fontSize: '40px',
             onClick: () => {
                 if (!this.scale.isFullscreen) {
                     this.scale.startFullscreen();
@@ -45,11 +41,7 @@ export default class MenuScene extends Phaser.Scene {
 
         if (SaveSystem.hasSave()) {
             new Button({
-                scene: this,
-                x: width / 2,
-                y: height / 2 + 180,
-                text: '이어하기',
-                variant: 'secondary',
+                scene: this, x: width / 2, y: height / 2 + 180, text: '이어하기', variant: 'secondary',
                 onClick: () => {
                     SaveSystem.loadGame();
                     this.scene.start('MapScene');
@@ -58,14 +50,8 @@ export default class MenuScene extends Phaser.Scene {
         }
 
         new Button({
-            scene: this,
-            x: width - 150,
-            y: 100,
-            text: '⚙️ 설정',
-            variant: 'secondary',
-            width: 200,
-            height: 60,
-            fontSize: '32px',
+            scene: this, x: width - 150, y: 100, text: '⚙️ 설정', variant: 'secondary',
+            width: 200, height: 60, fontSize: '32px',
             onClick: () => this.openSettingsModal() 
         });
     }
@@ -75,27 +61,23 @@ export default class MenuScene extends Phaser.Scene {
         GameState.player.hp = GameState.player.maxHp; 
         
         GameState.masterDeck = [
-            { id: `strike_${Date.now()}_1`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
-            { id: `strike_${Date.now()}_2`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
-            { id: `strike_${Date.now()}_3`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
-            { id: `strike_${Date.now()}_4`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
-            { id: `defend_${Date.now()}_1`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
-            { id: `defend_${Date.now()}_2`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
-            { id: `defend_${Date.now()}_3`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
-            { id: `defend_${Date.now()}_4`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 }
+            { id: `strike_${Date.now()}_1`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
+            { id: `strike_${Date.now()}_2`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
+            { id: `strike_${Date.now()}_3`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
+            { id: `strike_${Date.now()}_4`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
+            { id: `defend_${Date.now()}_1`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
+            { id: `defend_${Date.now()}_2`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
+            { id: `defend_${Date.now()}_3`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
+            { id: `defend_${Date.now()}_4`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 }
         ];
     }
 
     private openSettingsModal() {
-        const modal = new Modal({
-            scene: this, title: '환경 설정', width: 800, height: 600
-        });
-
+        const modal = new Modal({ scene: this, title: '환경 설정', width: 800, height: 600 });
         const content = modal.contentContainer;
         
         const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
-            fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
-            padding: { left: 10, right: 10, top: 15, bottom: 15 }
+            fontSize: '40px', color: '#ffffff', fontStyle: 'bold', padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         content.add(modeText);
 
