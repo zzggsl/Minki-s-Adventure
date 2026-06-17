@@ -11,7 +11,6 @@ import type { TooltipItem } from '../ui/Tooltip';
 import { SettingsManager } from '../managers/SettingsManager';
 import type { ICardData } from '../types';
 
-// 💡 규칙 1 준수: any를 대체할 명확한 인터페이스 정의
 interface ICardStartPos {
     x: number;
     y: number;
@@ -52,7 +51,6 @@ export default class BattleScene extends Phaser.Scene {
     turnText!: Phaser.GameObjects.Text;
     cardContainers: Phaser.GameObjects.Container[] = [];
 
-    // 💡 규칙 1 준수: any 제거
     private selectedCard: { container: Phaser.GameObjects.Container, data: ICardData, index: number, startPos: ICardStartPos } | null = null;
 
     constructor() {
@@ -77,9 +75,9 @@ export default class BattleScene extends Phaser.Scene {
             onSettingsClick: () => this.openSettingsModal()
         });
 
+        // 💡 100% 개발자님 커스텀 코드가 반영된 함수 호출
         this.createActors();
         
-        // 💡 규칙 2 준수: 고정 픽셀 대신 width/height 비율(%) 배치로 전면 교체
         this.endTurnButton = new Button({
             scene: this, x: width * 0.88, y: height * 0.85, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
             onClick: () => { if (GameState.turn === 'player') this.endPlayerTurn(); }
@@ -103,7 +101,6 @@ export default class BattleScene extends Phaser.Scene {
             const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
             
             if (!clickedCard && this.selectedCard) {
-                // 화면 상단을 누르면 카드 사용, 하단을 누르면 선택 취소
                 if (pointer.y < height * 0.6) {
                     this.playCard(this.selectedCard.data, this.selectedCard.index, this.selectedCard.container);
                     this.selectedCard = null;
@@ -121,6 +118,7 @@ export default class BattleScene extends Phaser.Scene {
         this.renderHand(true); 
     }
 
+    // 💡 개발자님이 직접 수정하신 완벽한 createActors 함수 
     createActors() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -133,7 +131,7 @@ export default class BattleScene extends Phaser.Scene {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
-            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items);
+            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items); // 💡 반영됨
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -155,7 +153,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
-            this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items);
+            this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items); // 💡 반영됨
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 
@@ -176,7 +174,7 @@ export default class BattleScene extends Phaser.Scene {
         const height = this.cameras.main.height;
         const handSize = GameState.hand.length;
         
-        const cardSpacing = Math.min(220, (width * 0.6) / Math.max(1, handSize)); // 💡 덱이 늘어나도 안전하도록 조절
+        const cardSpacing = Math.min(220, (width * 0.6) / Math.max(1, handSize)); 
         const startX = (width * 0.5) - ((handSize - 1) * cardSpacing) / 2;
 
         GameState.hand.forEach((cardData, index) => {
@@ -208,7 +206,6 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.setAngle(angle); 
         
         if (animate) {
-            // 💡 비율 기반 드로우 애니메이션 시작 좌표
             cardContainer.setPosition(width * 0.12, height * 0.9);
             cardContainer.setAngle(0);
             cardContainer.setScale(0.1);
@@ -217,7 +214,7 @@ export default class BattleScene extends Phaser.Scene {
 
         cardContainer.setInteractive();
         this.input.setDraggable(cardContainer);
-        const startPos: ICardStartPos = { x, y, angle }; // 💡 명확한 타입 사용
+        const startPos: ICardStartPos = { x, y, angle }; 
 
         cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
@@ -268,7 +265,6 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             bg.setStrokeStyle(6, 0xffffff);
 
-            // 사용 판정 기준 (화면 높이의 60% 이상 위로 올렸을 때)
             if (cardContainer.y < height * 0.6) {
                 this.playCard(cardData, handIndex, cardContainer); 
                 this.selectedCard = null; 
@@ -325,7 +321,6 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     private discardCardAnim(container: Phaser.GameObjects.Container, delay: number = 0) {
-        // 💡 비율 기반 버림 좌표
         const discardX = this.cameras.main.width * 0.88; 
         const discardY = this.cameras.main.height * 0.94; 
 

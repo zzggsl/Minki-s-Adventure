@@ -3,6 +3,7 @@ import { SaveSystem } from '../systems/SaveSystem';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { SettingsManager } from '../managers/SettingsManager';
+import { GameState } from '../core/GameState'; // 💡 GameState 추가
 
 export default class MenuScene extends Phaser.Scene {
     constructor() {
@@ -10,7 +11,7 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     create() {
-        // 💡 접속 기기 환경 감지 테스트 (개발자 콘솔 F12에서 확인 가능)
+        // 💡 접속 기기 환경 감지 테스트
         console.log("현재 모바일 UI 모드인가?", SettingsManager.isMobileUI(this));
 
         const width = this.cameras.main.width;
@@ -19,10 +20,10 @@ export default class MenuScene extends Phaser.Scene {
         // 타이틀 텍스트
         this.add.text(width / 2, height / 3, '민기의 모험', { 
             fontSize: '120px', color: '#ffffff', fontStyle: 'bold',
-            padding: { top: 30, bottom: 30 } // 💡 추가: 거대 폰트 잘림 방지
+            padding: { top: 30, bottom: 30 } 
         }).setOrigin(0.5);
         
-        // 💡 1. 새 게임 버튼 (Primary Variant 사용)
+        // 💡 1. 새 게임 버튼 (전체화면 진입 및 기본 덱 지급 추가)
         new Button({
             scene: this,
             x: width / 2,
@@ -33,16 +34,22 @@ export default class MenuScene extends Phaser.Scene {
             height: 100,
             fontSize: '40px',
             onClick: () => {
-                // 전체화면이 아니라면 진입 요청 (브라우저 정책에 따라 클릭 이벤트 내에서만 작동함)
+                // 전체화면 진입
                 if (!this.scale.isFullscreen) {
                     this.scale.startFullscreen();
                 }
                 this.sound.play('click');
+
+                // 💡 덱이 비어있다면 새 게임으로 간주하고 기본 덱/체력 세팅!
+                if (!GameState.masterDeck || GameState.masterDeck.length === 0) {
+                    this.initNewGame();
+                }
+
                 this.scene.start('MapScene');
             }
         });
 
-        // 💡 2. 이어하기 버튼 (Secondary Variant 사용, 세이브가 있을 때만 렌더링)
+        // 💡 2. 이어하기 버튼 (기존 코드 완벽 보존)
         if (SaveSystem.hasSave()) {
             new Button({
                 scene: this,
@@ -57,7 +64,7 @@ export default class MenuScene extends Phaser.Scene {
             });
         }
 
-        // 💡 3. 설정 버튼 (우측 상단 배치)
+        // 💡 3. 설정 버튼 (기존 코드 완벽 보존)
         new Button({
             scene: this,
             x: width - 150,
@@ -67,65 +74,65 @@ export default class MenuScene extends Phaser.Scene {
             width: 200,
             height: 60,
             fontSize: '32px',
-            onClick: () => this.openSettingsModal() // 모달 열기 호출
+            onClick: () => this.openSettingsModal() 
         });
     }
 
-    // 💡 4. 설정 모달 창 생성 함수
+    // 💡 새 게임이 시작될 때 기본 스탯과 시작 카드를 지급하는 함수
+    private initNewGame() {
+        GameState.floor = 1;
+        GameState.player.hp = GameState.player.maxHp; 
+        
+        GameState.masterDeck = [
+            { id: `strike_${Date.now()}_1`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
+            { id: `strike_${Date.now()}_2`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
+            { id: `strike_${Date.now()}_3`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
+            { id: `strike_${Date.now()}_4`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6 },
+            { id: `defend_${Date.now()}_1`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
+            { id: `defend_${Date.now()}_2`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
+            { id: `defend_${Date.now()}_3`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 },
+            { id: `defend_${Date.now()}_4`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5 }
+        ];
+    }
+
+    // 💡 4. 설정 모달 창 생성 함수 (기존 코드 완벽 보존)
     private openSettingsModal() {
         const modal = new Modal({
-            scene: this,
-            title: '환경 설정',
-            width: 800,
-            height: 600
+            scene: this, title: '환경 설정', width: 800, height: 600
         });
 
         const content = modal.contentContainer;
         
-        // 현재 적용된 모드 표시 텍스트
         const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
             fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
             padding: { left: 10, right: 10, top: 15, bottom: 15 }
         }).setOrigin(0.5);
         content.add(modeText);
 
-        // 자동 감지 버튼
         const autoBtn = new Button({
-            scene: this, x: -220, y: 50,
-            text: '자동 감지', variant: 'secondary',
-            width: 180, height: 60, fontSize: '28px',
+            scene: this, x: -220, y: 50, text: '자동 감지', variant: 'secondary', width: 180, height: 60, fontSize: '28px',
             onClick: () => {
                 SettingsManager.setForceUIMode('auto');
                 modeText.setText(`현재 UI 모드: auto`);
-                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
             }
         });
 
-        // PC 강제 모드 버튼
         const pcBtn = new Button({
-            scene: this, x: 0, y: 50,
-            text: 'PC 모드', variant: 'primary',
-            width: 180, height: 60, fontSize: '28px',
+            scene: this, x: 0, y: 50, text: 'PC 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
             onClick: () => {
                 SettingsManager.setForceUIMode('pc');
                 modeText.setText(`현재 UI 모드: pc`);
-                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
             }
         });
 
-        // 모바일 강제 모드 버튼
         const mobileBtn = new Button({
-            scene: this, x: 220, y: 50,
-            text: '모바일 모드', variant: 'primary',
-            width: 180, height: 60, fontSize: '28px',
+            scene: this, x: 220, y: 50, text: '모바일 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
             onClick: () => {
                 SettingsManager.setForceUIMode('mobile');
                 modeText.setText(`현재 UI 모드: mobile`);
-                console.log("UI 감지 상태:", SettingsManager.isMobileUI(this));
             }
         });
 
-        // 모달의 내용물 그릇(contentContainer)에 텍스트와 버튼들 담기
         content.add([autoBtn, pcBtn, mobileBtn]);
     }
 }

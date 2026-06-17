@@ -13,8 +13,9 @@ export interface ICardData {
 export interface ICharacter {
     hp: number;
     maxHp: number;
-    block: number;
     mana?: number;
     maxMana?: number;
     intent?: { type: string; value: number };
+    damage?: number; 
+    block?: number; 
 }
