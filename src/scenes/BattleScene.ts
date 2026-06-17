@@ -133,7 +133,7 @@ export default class BattleScene extends Phaser.Scene {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
             items.push({ title: '상태', desc: '현재 걸려있는 버프/디버프가 없습니다.' });
-            this.tooltip.show(this.playerSprite.x + 100, this.playerSprite.y - 100, items); 
+            this.tooltip.show(this.playerSprite.x + 150, this.playerSprite.y - 100, items);
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
@@ -155,7 +155,7 @@ export default class BattleScene extends Phaser.Scene {
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
-            this.tooltip.show(this.enemySprite.x - 480, this.enemySprite.y - 100, items); 
+            this.tooltip.show(this.enemySprite.x - 530, this.enemySprite.y - 100, items);
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 
