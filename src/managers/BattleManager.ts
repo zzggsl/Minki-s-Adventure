@@ -1,3 +1,4 @@
+import Phaser from 'phaser'; // 💡 반드시 명시적으로 임포트
 import { GameState } from '../core/GameState';
 import { DeckSystem } from '../systems/DeckSystem';
 import type { ICardData, ICharacter } from '../types';
@@ -106,6 +107,7 @@ export class BattleManager {
 
     private static generateEnemyIntent() {
         if (GameState.enemy) {
+            // 💡 전역 Phaser 참조가 아닌 임포트된 Phaser 모듈 사용
             GameState.enemy.intent = { type: 'attack', value: Phaser.Math.Between(5, 15) };
         }
     }
