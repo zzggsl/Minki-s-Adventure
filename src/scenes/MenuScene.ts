@@ -26,12 +26,18 @@ export default class MenuScene extends Phaser.Scene {
         new Button({
             scene: this,
             x: width / 2,
-            y: height / 2 + 50,
-            text: '새 게임',
+            y: height * 0.6,
+            text: '모험 시작',
             variant: 'primary',
+            width: 300,
+            height: 100,
+            fontSize: '40px',
             onClick: () => {
-                SaveSystem.clearSave(); // 기존 세이브 삭제
-                SaveSystem.resetGame(); // 💡 누락되었던 핵심 코드: 체력과 기본 덱을 다시 채워줍니다!
+                // 전체화면이 아니라면 진입 요청 (브라우저 정책에 따라 클릭 이벤트 내에서만 작동함)
+                if (!this.scale.isFullscreen) {
+                    this.scale.startFullscreen();
+                }
+                this.sound.play('click');
                 this.scene.start('MapScene');
             }
         });

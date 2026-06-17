@@ -11,6 +11,13 @@ import type { TooltipItem } from '../ui/Tooltip';
 import { SettingsManager } from '../managers/SettingsManager';
 import type { ICardData } from '../types';
 
+// 💡 규칙 1 준수: any를 대체할 명확한 인터페이스 정의
+interface ICardStartPos {
+    x: number;
+    y: number;
+    angle: number;
+}
+
 const KEYWORD_DICT: Record<string, string> = {
     '방어도': '다음 턴까지 적의 공격 피해를 막아줍니다.',
     '독': '매 턴 시작 시 수치만큼 피해를 입고, 중첩이 1 감소합니다.',
@@ -45,14 +52,13 @@ export default class BattleScene extends Phaser.Scene {
     turnText!: Phaser.GameObjects.Text;
     cardContainers: Phaser.GameObjects.Container[] = [];
 
-    // 💡 모바일 터치 UX를 위한 '현재 선택된 카드' 상태 저장소
-    private selectedCard: { container: Phaser.GameObjects.Container, data: ICardData, index: number, startPos: any } | null = null;
+    // 💡 규칙 1 준수: any 제거
+    private selectedCard: { container: Phaser.GameObjects.Container, data: ICardData, index: number, startPos: ICardStartPos } | null = null;
 
     constructor() {
         super({ key: 'BattleScene' });
     }
 
-    // 💡 기기 모드 판별 헬퍼 (SettingsManager와 연동)
     private get isMobileMode(): boolean {
         if (SettingsManager.settings.forceUIMode === 'mobile') return true;
         if (SettingsManager.settings.forceUIMode === 'pc') return false;
@@ -73,38 +79,36 @@ export default class BattleScene extends Phaser.Scene {
 
         this.createActors();
         
+        // 💡 규칙 2 준수: 고정 픽셀 대신 width/height 비율(%) 배치로 전면 교체
         this.endTurnButton = new Button({
-            scene: this, x: width - 200, y: height / 1.2, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
+            scene: this, x: width * 0.88, y: height * 0.85, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
             onClick: () => { if (GameState.turn === 'player') this.endPlayerTurn(); }
         });
 
         this.drawPileBtn = new Button({
-            scene: this, x: 150, y: height - 80, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: width * 0.12, y: height * 0.9, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
             onClick: () => this.openPileModal('뽑을 카드 더미', GameState.deck || [])
         });
 
         this.discardPileBtn = new Button({
-            scene: this, x: width - 150, y: height - 80, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: width * 0.88, y: height * 0.94, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
             onClick: () => this.openPileModal('버린 카드 더미', GameState.discard || [])
         });
         
-        this.turnText = this.add.text(width / 2, 120, '', { fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
+        this.turnText = this.add.text(width * 0.5, height * 0.15, '', { fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
         
-        // 💡 바탕화면 터치 감지 (모바일 환경에서 탭으로 카드 사용 / 취소)
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
             if (GameState.turn !== 'player' || !this.isMobileMode) return;
 
             const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
             
             if (!clickedCard && this.selectedCard) {
-                // 카드가 아닌 다른 곳을 눌렀을 때
-                if (pointer.y < height - 450) {
-                    // 위쪽이나 적을 터치하면 카드 쓩! 사용
+                // 화면 상단을 누르면 카드 사용, 하단을 누르면 선택 취소
+                if (pointer.y < height * 0.6) {
                     this.playCard(this.selectedCard.data, this.selectedCard.index, this.selectedCard.container);
                     this.selectedCard = null;
                     this.tooltip.hide();
                 } else {
-                    // 아래쪽 빈 공간을 터치하면 선택 취소
                     this.deselectCard(true);
                 }
             }
@@ -123,7 +127,8 @@ export default class BattleScene extends Phaser.Scene {
         const hpBarWidth = 240;
         const hpBarHeight = 30;
 
-        this.playerSprite = this.add.sprite(width * 0.2, height * 0.5, 'player').setScale(0.32).setInteractive(); 
+        // 플레이어 배치
+        this.playerSprite = this.add.sprite(width * 0.25, height * 0.45, 'player').setScale(0.32).setInteractive(); 
         this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.player.block > 0) items.push({ title: '방어도', desc: `현재 ${GameState.player.block}의 피해를 막을 수 있습니다.`, iconKey: 'shieldicon' });
@@ -132,21 +137,21 @@ export default class BattleScene extends Phaser.Scene {
         });
         this.playerSprite.on('pointerout', () => this.tooltip.hide());
 
-        this.add.rectangle(width * 0.2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333); 
-        this.playerHpBarFill = this.add.rectangle(width * 0.2 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); 
-        this.playerHpText = this.add.text(width * 0.2, height * 0.5 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
+        this.add.rectangle(width * 0.25, height * 0.45 + 230, hpBarWidth, hpBarHeight, 0x333333); 
+        this.playerHpBarFill = this.add.rectangle(width * 0.25 - hpBarWidth / 2, height * 0.45 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); 
+        this.playerHpText = this.add.text(width * 0.25, height * 0.45 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
 
         const manaBg = this.add.sprite(0, 0, 'energy').setScale(2.5);
         this.manaText = this.add.text(0, 0, '', { fontSize: '52px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        this.manaContainer = this.add.container(width * 0.12, height * 0.82, [manaBg, this.manaText]);
+        this.manaContainer = this.add.container(width * 0.15, height * 0.8, [manaBg, this.manaText]);
 
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        this.blockContainer = this.add.container(width * 0.2 - 150, height * 0.5 + 230, [blockBg, this.blockText]);
+        this.blockContainer = this.add.container(width * 0.25 - 150, height * 0.45 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        this.enemySprite = this.add.sprite(width * 0.8, height * 0.5, 'enemy_gunha').setScale(0.45).setInteractive();
-        
+        // 적 배치
+        this.enemySprite = this.add.sprite(width * 0.75, height * 0.45, 'enemy_gunha').setScale(0.45).setInteractive();
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
             if (GameState.enemy.intent) items.push({ title: '공격', desc: `플레이어에게 ${GameState.enemy.intent.value}의 피해를 입힐 예정입니다.`, iconKey: 'swordicon' });
@@ -154,30 +159,30 @@ export default class BattleScene extends Phaser.Scene {
         });
         this.enemySprite.on('pointerout', () => this.tooltip.hide());
 
-        this.add.rectangle(width * 0.8, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0x333333);
-        this.enemyHpBarFill = this.add.rectangle(width * 0.8 - hpBarWidth / 2, height * 0.5 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5);
-        this.enemyHpText = this.add.text(width * 0.8, height * 0.5 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
+        this.add.rectangle(width * 0.75, height * 0.45 + 230, hpBarWidth, hpBarHeight, 0x333333);
+        this.enemyHpBarFill = this.add.rectangle(width * 0.75 - hpBarWidth / 2, height * 0.45 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5);
+        this.enemyHpText = this.add.text(width * 0.75, height * 0.45 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
         
-        this.enemyIntentIcon = this.add.sprite(width * 0.8 - 20, height * 0.5 - 250, 'swordicon').setScale(0.1).setOrigin(1, 0.5);
-        this.enemyIntentText = this.add.text(width * 0.8, height * 0.5 - 250, '', { fontSize: '44px', color: '#ffaaaa', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0, 0.5);
+        this.enemyIntentIcon = this.add.sprite(width * 0.75 - 20, height * 0.45 - 250, 'swordicon').setScale(0.1).setOrigin(1, 0.5);
+        this.enemyIntentText = this.add.text(width * 0.75, height * 0.45 - 250, '', { fontSize: '44px', color: '#ffaaaa', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0, 0.5);
     }
 
     renderHand(animate: boolean = false) {
         this.cardContainers.forEach(container => container.destroy());
         this.cardContainers = [];
-        this.selectedCard = null; // 💡 패가 다시 그려지면 선택 상태도 초기화
+        this.selectedCard = null; 
 
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
         const handSize = GameState.hand.length;
         
-        const cardSpacing = Math.min(220, width / (handSize + 1)); // 💡 해상도가 좁을 때 겹침 방지 보정
-        const startX = (width / 2) - ((handSize - 1) * cardSpacing) / 2;
+        const cardSpacing = Math.min(220, (width * 0.6) / Math.max(1, handSize)); // 💡 덱이 늘어나도 안전하도록 조절
+        const startX = (width * 0.5) - ((handSize - 1) * cardSpacing) / 2;
 
         GameState.hand.forEach((cardData, index) => {
             const offsetFromCenter = index - (handSize - 1) / 2;
             const targetX = startX + (index * cardSpacing);
-            const targetY = height - 150 + Math.abs(offsetFromCenter) * 30; 
+            const targetY = height * 0.85 + Math.abs(offsetFromCenter) * 20; 
             const targetAngle = offsetFromCenter * 5; 
 
             this.createCardView(targetX, targetY, targetAngle, cardData, index, animate, index);
@@ -187,6 +192,8 @@ export default class BattleScene extends Phaser.Scene {
     createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number, animate: boolean, delayIndex: number) {
         const cardWidth = 260;
         const cardHeight = 380;
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
         
         const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
         bg.setStrokeStyle(6, 0xffffff);
@@ -201,7 +208,8 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.setAngle(angle); 
         
         if (animate) {
-            cardContainer.setPosition(150, this.cameras.main.height - 80);
+            // 💡 비율 기반 드로우 애니메이션 시작 좌표
+            cardContainer.setPosition(width * 0.12, height * 0.9);
             cardContainer.setAngle(0);
             cardContainer.setScale(0.1);
             this.tweens.add({ targets: cardContainer, x: x, y: y, angle: angle, scale: 1, delay: delayIndex * 150, duration: 400, ease: 'Back.easeOut', onStart: () => { this.sound.play(`shuffle${Phaser.Math.Between(1, 7)}`); } });
@@ -209,14 +217,13 @@ export default class BattleScene extends Phaser.Scene {
 
         cardContainer.setInteractive();
         this.input.setDraggable(cardContainer);
-        const startPos = { x, y, angle };
+        const startPos: ICardStartPos = { x, y, angle }; // 💡 명확한 타입 사용
 
-        // 💡 모바일 탭 (단일 터치) 선택 로직
         cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
             if (this.isMobileMode) {
                 if (this.selectedCard?.container === cardContainer) {
-                    this.deselectCard(true); // 다시 누르면 선택 해제
+                    this.deselectCard(true); 
                 } else {
                     this.selectCard(cardContainer, cardData, handIndex, startPos);
                 }
@@ -224,7 +231,7 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         cardContainer.on('pointerover', () => {
-            if (GameState.turn !== 'player' || this.isMobileMode) return; // 💡 PC 마우스 호버 전용
+            if (GameState.turn !== 'player' || this.isMobileMode) return; 
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
             this.sound.play('click'); 
@@ -242,9 +249,8 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.on('dragstart', () => {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer); 
-            this.tooltip.hide(); // 드래그 시 시야 확보를 위해 툴팁 숨김
+            this.tooltip.hide(); 
 
-            // 모바일에서 선택하지 않고 바로 드래그할 경우 자연스럽게 선택 상태로 취급
             if (this.isMobileMode && this.selectedCard?.container !== cardContainer) {
                 this.selectCard(cardContainer, cardData, handIndex, startPos);
                 this.tooltip.hide(); 
@@ -262,22 +268,22 @@ export default class BattleScene extends Phaser.Scene {
             if (GameState.turn !== 'player') return;
             bg.setStrokeStyle(6, 0xffffff);
 
-            if (cardContainer.y < this.cameras.main.height - 450) {
+            // 사용 판정 기준 (화면 높이의 60% 이상 위로 올렸을 때)
+            if (cardContainer.y < height * 0.6) {
                 this.playCard(cardData, handIndex, cardContainer); 
-                this.selectedCard = null; // 사용 성공 시 초기화
+                this.selectedCard = null; 
                 this.tooltip.hide();
             } else {
                 this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
-                if (this.isMobileMode) this.selectedCard = null; // 제자리로 돌려놓으면 선택 해제
+                if (this.isMobileMode) this.selectedCard = null; 
             }
         });
 
         this.cardContainers.push(cardContainer);
     }
 
-    // 💡 카드 팝업 (선택) 처리 함수
-    private selectCard(container: Phaser.GameObjects.Container, cardData: ICardData, index: number, startPos: any) {
-        if (this.selectedCard) this.deselectCard(true); // 기존 선택 카드 원상복구
+    private selectCard(container: Phaser.GameObjects.Container, cardData: ICardData, index: number, startPos: ICardStartPos) {
+        if (this.selectedCard) this.deselectCard(true); 
         
         this.selectedCard = { container, data: cardData, index, startPos };
         this.children.bringToTop(container);
@@ -290,7 +296,6 @@ export default class BattleScene extends Phaser.Scene {
         this.showCardTooltip(container, cardData);
     }
 
-    // 💡 카드 선택 취소 처리 함수
     private deselectCard(animateBack: boolean) {
         if (!this.selectedCard) return;
         
@@ -306,7 +311,6 @@ export default class BattleScene extends Phaser.Scene {
         this.tooltip.hide();
     }
 
-    // 💡 카드 툴팁 헬퍼 함수
     private showCardTooltip(cardContainer: Phaser.GameObjects.Container, cardData: ICardData) {
         const tooltipItems: TooltipItem[] = [];
         for (const [keyword, description] of Object.entries(KEYWORD_DICT)) {
@@ -321,8 +325,9 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     private discardCardAnim(container: Phaser.GameObjects.Container, delay: number = 0) {
-        const discardX = this.cameras.main.width - 150; 
-        const discardY = this.cameras.main.height - 80; 
+        // 💡 비율 기반 버림 좌표
+        const discardX = this.cameras.main.width * 0.88; 
+        const discardY = this.cameras.main.height * 0.94; 
 
         container.disableInteractive(); 
         this.children.bringToTop(container);
@@ -338,7 +343,7 @@ export default class BattleScene extends Phaser.Scene {
 
         if (!result.success) {
             this.sound.play('error'); 
-            this.showFloatingText(this.cameras.main.width / 2, this.cameras.main.height / 2, result.reason || "사용 불가", 0xff0000);
+            this.showFloatingText(this.cameras.main.width * 0.5, this.cameras.main.height * 0.5, result.reason || "사용 불가", 0xff0000);
             this.cardContainers.push(cardContainer); 
             this.renderHand(false); 
             return;
