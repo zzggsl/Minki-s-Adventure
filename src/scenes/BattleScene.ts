@@ -48,6 +48,8 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     create() {
+        this.turnCount = 1; 
+
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
@@ -121,9 +123,14 @@ export default class BattleScene extends Phaser.Scene {
         this.playerHpBarFill = this.add.rectangle(width * 0.25 - hpBarWidth / 2, height * 0.45 + 230, hpBarWidth, hpBarHeight, 0xff0000).setOrigin(0, 0.5); 
         this.playerHpText = this.add.text(width * 0.25, height * 0.45 + 230, '', { fontSize: '24px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 10, bottom: 10 } }).setOrigin(0.5);
 
-        const manaBg = this.add.sprite(0, 0, 'energy').setScale(2.5);
-        this.manaText = this.add.text(0, 0, '', { fontSize: '52px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        this.manaContainer = this.add.container(width * 0.15, height * 0.8, [manaBg, this.manaText]);
+        // src/scenes/BattleScene.ts의 createActors() 내부
+
+        // 💡 2. 에너지 보석 스케일을 2.5 -> 1.8로 줄이고 폰트 크기도 44px로 조절
+        const manaBg = this.add.sprite(0, 0, 'energy').setScale(1.8);
+        this.manaText = this.add.text(0, 0, '', { fontSize: '44px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
+        
+        // 💡 컨테이너의 Y 위치를 height * 0.8 -> height * 0.82 로 아주 살짝 내림
+        this.manaContainer = this.add.container(width * 0.15, height * 0.82, [manaBg, this.manaText]);
 
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
@@ -196,6 +203,8 @@ export default class BattleScene extends Phaser.Scene {
             this.tweens.add({ targets: cardContainer, x: x, y: y, angle: angle, scale: 1, delay: delayIndex * 150, duration: 400, ease: 'Back.easeOut', onStart: () => { this.sound.play(`shuffle${Phaser.Math.Between(1, 7)}`); } });
         }
 
+        // src/scenes/BattleScene.ts의 createCardView() 내부 하단
+
         cardContainer.setInteractive();
         this.input.setDraggable(cardContainer);
         const startPos: ICardStartPos = { x, y, angle }; 
@@ -204,14 +213,14 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
             if (SettingsManager.isMobileUI(this)) {
-                if (this.selectedCard?.container === cardContainer) {
-                    this.deselectCard(true); 
-                } else {
+                // 모바일: 이 카드가 아직 선택되지 않았다면 팝업 및 툴팁 표시
+                if (this.selectedCard?.container !== cardContainer) {
                     this.selectCard(cardContainer, cardData, handIndex, startPos);
                 }
             }
         });
 
+        // 💡 2. 마우스 오버 (PC 환경 전용)
         cardContainer.on('pointerover', () => {
             if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
             this.children.bringToTop(cardContainer);
@@ -221,6 +230,7 @@ export default class BattleScene extends Phaser.Scene {
             this.showCardTooltip(cardContainer, cardData);
         });
 
+        // 💡 3. 마우스 아웃 (PC 환경 전용)
         cardContainer.on('pointerout', () => {
             if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
             bg.setStrokeStyle(6, 0xffffff);
@@ -228,43 +238,68 @@ export default class BattleScene extends Phaser.Scene {
             this.tooltip.hide();
         });
 
-        // 💡 2. 드래그 시작 시 무조건 툴팁 끄지 않고, 미세 터치 방어
+        // 💡 4. 드래그 시작 (모바일 미세 터치 방어 핵심)
         cardContainer.on('dragstart', () => {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer); 
-            if (SettingsManager.isMobileUI(this) && this.selectedCard?.container !== cardContainer) {
-                this.selectCard(cardContainer, cardData, handIndex, startPos);
+
+            if (SettingsManager.isMobileUI(this)) {
+                if (this.selectedCard?.container !== cardContainer) {
+                    // 모바일: 선택 안 된 카드를 드래그하려 하면 툴팁 안 끄고 '선택 상태'로만 만듦!
+                    this.selectCard(cardContainer, cardData, handIndex, startPos);
+                } else {
+                    // 모바일: '이미 선택된' 카드를 본격적으로 드래그할 때 비로소 툴팁을 끔
+                    this.tooltip.hide(); 
+                }
+            } else {
+                this.tooltip.hide(); // PC 모드
             }
         });
 
+        // 💡 5. 드래그 이동 중
         cardContainer.on('drag', (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
             if (GameState.turn !== 'player') return;
+            
+            // 모바일: 현재 선택된 카드가 아니면 드래그를 원천 차단 (자물쇠 채움)
+            if (SettingsManager.isMobileUI(this) && this.selectedCard?.container !== cardContainer) {
+                return; 
+            }
+
             cardContainer.x = dragX;
             cardContainer.y = dragY;
             cardContainer.setAngle(0); 
-            this.tooltip.hide(); // 실제로 크게 움직일 때만 툴팁을 끔
         });
 
-        // 💡 3. 미세한 떨림으로 드래그가 종료되었을 때, 선택 상태면 다시 팝업 복구!
+        // 💡 6. 드래그 종료
         cardContainer.on('dragend', () => {
             if (GameState.turn !== 'player') return;
-            
+
+            // 모바일: 드래그가 끝났는데 사용 영역(화면 위쪽)에 도달하지 못했다면, 
+            // 원래 덱으로 넣지 말고 '선택된 팝업 상태'를 유지시킴!
+            if (SettingsManager.isMobileUI(this) && this.selectedCard?.container === cardContainer) {
+                if (cardContainer.y < height * 0.6) {
+                    bg.setStrokeStyle(6, 0xffffff);
+                    this.playCard(cardData, handIndex, cardContainer); 
+                    this.selectedCard = null; 
+                    this.tooltip.hide();
+                } else {
+                    // 제자리로 돌아오면서 선택 상태 유지 (툴팁도 다시 보여줌)
+                    this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y - 150, angle: 0, scale: 1.2, duration: 150 });
+                    this.showCardTooltip(cardContainer, cardData);
+                }
+                return;
+            }
+
+            // PC 드래그 종료 로직
+            bg.setStrokeStyle(6, 0xffffff);
+
             if (cardContainer.y < height * 0.6) {
-                bg.setStrokeStyle(6, 0xffffff);
                 this.playCard(cardData, handIndex, cardContainer); 
                 this.selectedCard = null; 
                 this.tooltip.hide();
             } else {
-                // 사용하지 않고 손을 뗐을 때
-                if (SettingsManager.isMobileUI(this) && this.selectedCard?.container === cardContainer) {
-                    // 선택된 카드라면 노란 테두리 유지 및 똑바로 선 팝업 위치로 복귀
-                    bg.setStrokeStyle(8, 0xffff00);
-                    this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y - 150, angle: 0, scale: 1.2, duration: 200, ease: 'Back.easeOut' });
-                    this.showCardTooltip(cardContainer, cardData);
-                } else {
-                    bg.setStrokeStyle(6, 0xffffff);
-                    this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
-                }
+                this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
+                if (SettingsManager.isMobileUI(this)) this.selectedCard = null; 
             }
         });
 
@@ -272,16 +307,19 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     private selectCard(container: Phaser.GameObjects.Container, cardData: ICardData, index: number, startPos: ICardStartPos) {
-        if (this.selectedCard) this.deselectCard(true); 
+        // 💡 자기 자신이 아닌 '다른 카드'가 켜져 있을 때만 기존 카드를 집어넣음
+        if (this.selectedCard && this.selectedCard.container !== container) {
+            this.deselectCard(true); 
+        }
         
         this.selectedCard = { container, data: cardData, index, startPos };
         this.children.bringToTop(container);
         this.sound.play('click');
         
         const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
-        bg.setStrokeStyle(8, 0xffff00); // 노란 테두리
+        bg.setStrokeStyle(8, 0xffff00);
         
-        // 💡 카드가 똑바로 서면서 튀어나오게 수정
+        // 💡 카드가 똑바로 서면서 위로 튀어나오게(y - 150) 연출
         this.tweens.add({ targets: container, y: startPos.y - 150, scale: 1.2, angle: 0, duration: 150 });
         this.showCardTooltip(container, cardData);
     }
