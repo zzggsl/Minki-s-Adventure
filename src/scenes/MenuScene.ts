@@ -21,12 +21,22 @@ export default class MenuScene extends Phaser.Scene {
         new Button({
             scene: this, x: width / 2, y: height * 0.6, text: '모험 시작', variant: 'primary', width: 300, height: 100, fontSize: '40px',
             onClick: () => {
-                if (!this.scale.isFullscreen) this.scale.startFullscreen();
+                // 💡 Apple 기기(iOS, iPadOS) 판별: 최근 iPadOS는 데스크탑 Mac으로 인식되므로 터치 여부도 함께 확인
+                const isAppleDevice = this.sys.game.device.os.iOS || 
+                                      this.sys.game.device.os.iPad || 
+                                      (this.sys.game.device.os.macOS && navigator.maxTouchPoints > 0);
+
+                // 💡 Apple 기기가 아닐 때(안드로이드, 일반 PC)만 전체화면 진입
+                if (!this.scale.isFullscreen && !isAppleDevice) {
+                    this.scale.startFullscreen();
+                }
+                
                 this.sound.play('click');
 
                 if (!GameState.masterDeck || GameState.masterDeck.length === 0) {
                     this.initNewGame();
                 }
+
                 this.scene.start('MapScene');
             }
         });
