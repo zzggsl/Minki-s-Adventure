@@ -4,26 +4,16 @@ import { EventBus } from '../core/EventBus';
 import { SaveSystem } from '../systems/SaveSystem';
 import { BattleManager } from '../managers/BattleManager';
 import { TopBar } from '../ui/TopBar';
-import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Tooltip } from '../ui/Tooltip'; 
+import { Tooltip } from '../ui/Tooltip';  
 import type { TooltipItem } from '../ui/Tooltip'; 
 import { SettingsManager } from '../managers/SettingsManager';
+import { KEYWORD_DICT } from '../data/keywords'; // 💡 분리된 데이터 임포트
+import { DeckModal } from '../ui/modals/DeckModal'; // 💡 덱 모달 임포트
+import { SettingsModal } from '../ui/modals/SettingsModal'; // 💡 설정 모달 임포트
 import type { ICardData } from '../types';
 
-interface ICardStartPos {
-    x: number;
-    y: number;
-    angle: number;
-}
-
-const KEYWORD_DICT: Record<string, string> = {
-    '방어도': '다음 턴까지 적의 공격 피해를 막아줍니다.',
-    '독': '매 턴 시작 시 수치만큼 피해를 입고, 중첩이 1 감소합니다.',
-    '취약': '받는 공격 피해가 50% 증가합니다.',
-    '약화': '가하는 공격 피해가 25% 감소합니다.',
-    '힘': '공격 카드의 피해량이 수치만큼 증가합니다.'
-};
+interface ICardStartPos { x: number; y: number; angle: number; }
 
 export default class BattleScene extends Phaser.Scene {
     private topBar!: TopBar;
@@ -57,12 +47,6 @@ export default class BattleScene extends Phaser.Scene {
         super({ key: 'BattleScene' });
     }
 
-    private get isMobileMode(): boolean {
-        if (SettingsManager.settings.forceUIMode === 'mobile') return true;
-        if (SettingsManager.settings.forceUIMode === 'pc') return false;
-        return this.sys.game.device.os.android || this.sys.game.device.os.iOS || this.sys.game.device.os.iPad;
-    }
-
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
@@ -71,8 +55,8 @@ export default class BattleScene extends Phaser.Scene {
 
         this.topBar = new TopBar({
             scene: this,
-            onDeckClick: () => this.openPileModal(`마스터 덱 (총 ${GameState.masterDeck.length}장)`, GameState.masterDeck),
-            onSettingsClick: () => this.openSettingsModal()
+            onDeckClick: () => { new DeckModal(this, `마스터 덱 (총 ${GameState.masterDeck.length}장)`, GameState.masterDeck); },
+            onSettingsClick: () => { new SettingsModal(this); }
         });
 
         this.createActors();
@@ -84,18 +68,19 @@ export default class BattleScene extends Phaser.Scene {
 
         this.drawPileBtn = new Button({
             scene: this, x: width * 0.12, y: height * 0.9, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
-            onClick: () => this.openPileModal('뽑을 카드 더미', GameState.deck || [])
+            onClick: () => { new DeckModal(this, '뽑을 카드 더미', GameState.deck || []); }
         });
 
         this.discardPileBtn = new Button({
             scene: this, x: width * 0.88, y: height * 0.94, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
-            onClick: () => this.openPileModal('버린 카드 더미', GameState.discard || [])
+            onClick: () => { new DeckModal(this, '버린 카드 더미', GameState.discard || []); }
         });
         
         this.turnText = this.add.text(width * 0.5, height * 0.15, '', { fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
         
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
-            if (GameState.turn !== 'player' || !this.isMobileMode) return;
+            // 💡 SettingsManager 단일 진실 공급원 사용
+            if (GameState.turn !== 'player' || !SettingsManager.isMobileUI(this)) return;
 
             const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
             
@@ -123,7 +108,6 @@ export default class BattleScene extends Phaser.Scene {
         const hpBarWidth = 240;
         const hpBarHeight = 30;
 
-        // 플레이어 배치
         this.playerSprite = this.add.sprite(width * 0.25, height * 0.45, 'player').setScale(0.32).setInteractive(); 
         this.playerSprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
@@ -146,7 +130,6 @@ export default class BattleScene extends Phaser.Scene {
         this.blockContainer = this.add.container(width * 0.25 - 150, height * 0.45 + 230, [blockBg, this.blockText]);
         this.blockContainer.setVisible(false);
 
-        // 적 배치
         this.enemySprite = this.add.sprite(width * 0.75, height * 0.45, 'enemy_gunha').setScale(0.45).setInteractive();
         this.enemySprite.on('pointerover', () => {
             const items: TooltipItem[] = [];
@@ -218,7 +201,7 @@ export default class BattleScene extends Phaser.Scene {
 
         cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
-            if (this.isMobileMode) {
+            if (SettingsManager.isMobileUI(this)) {
                 if (this.selectedCard?.container === cardContainer) {
                     this.deselectCard(true); 
                 } else {
@@ -228,7 +211,7 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         cardContainer.on('pointerover', () => {
-            if (GameState.turn !== 'player' || this.isMobileMode) return; 
+            if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
             this.children.bringToTop(cardContainer);
             bg.setStrokeStyle(8, 0xffff00);
             this.sound.play('click'); 
@@ -237,7 +220,7 @@ export default class BattleScene extends Phaser.Scene {
         });
 
         cardContainer.on('pointerout', () => {
-            if (GameState.turn !== 'player' || this.isMobileMode) return; 
+            if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
             bg.setStrokeStyle(6, 0xffffff);
             this.tweens.add({ targets: cardContainer, y: startPos.y, scale: 1, angle: startPos.angle, duration: 100 });
             this.tooltip.hide();
@@ -248,7 +231,7 @@ export default class BattleScene extends Phaser.Scene {
             this.children.bringToTop(cardContainer); 
             this.tooltip.hide(); 
 
-            if (this.isMobileMode && this.selectedCard?.container !== cardContainer) {
+            if (SettingsManager.isMobileUI(this) && this.selectedCard?.container !== cardContainer) {
                 this.selectCard(cardContainer, cardData, handIndex, startPos);
                 this.tooltip.hide(); 
             }
@@ -271,7 +254,7 @@ export default class BattleScene extends Phaser.Scene {
                 this.tooltip.hide();
             } else {
                 this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
-                if (this.isMobileMode) this.selectedCard = null; 
+                if (SettingsManager.isMobileUI(this)) this.selectedCard = null; 
             }
         });
 
@@ -314,7 +297,7 @@ export default class BattleScene extends Phaser.Scene {
                 let iconKey = undefined;
                 if (keyword === '방어도') iconKey = 'shieldicon';
                 if (keyword === '독' || keyword === '힘' || keyword === '취약' || keyword === '약화') iconKey = 'swordicon'; 
-                tooltipItems.push({ title: keyword, desc: description, iconKey });
+                tooltipItems.push({ title: keyword, desc: description as string, iconKey }); 
             }
         }
         if (tooltipItems.length > 0) this.tooltip.show(cardContainer.x + 160, cardContainer.y - 300, tooltipItems); 
@@ -465,49 +448,5 @@ export default class BattleScene extends Phaser.Scene {
         const text = this.add.text(x, y, message, { fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 6, padding: { top: 12, bottom: 12 } }).setOrigin(0.5);
         text.setTint(color);
         this.tweens.add({ targets: text, y: y - 100, alpha: 0, duration: 1000, ease: 'Power1', onComplete: () => text.destroy() });
-    }
-
-    private openPileModal(title: string, cards: ICardData[]) {
-        const modal = new Modal({ scene: this, title: title, width: 1800, height: 1200 });
-        const content = modal.contentContainer;
-        const cols = 6;
-        const cardScale = 0.8;
-        const cellW = 270 * cardScale + 30;
-        const cellH = 390 * cardScale + 40;
-        const startX = -((cols - 1) * cellW) / 2;
-        const startY = -250;
-
-        cards.forEach((cardData, index) => {
-            const col = index % cols;
-            const row = Math.floor(index / cols);
-            const cardView = this.createVisualCardHelper(0, 0, cardData);
-            cardView.setScale(cardScale);
-            const cardWrapper = this.add.container(startX + (col * cellW), startY + (row * cellH), [cardView]);
-            content.add(cardWrapper);
-        });
-    }
-
-    private createVisualCardHelper(x: number, y: number, cardData: ICardData): Phaser.GameObjects.Container {
-        const cardWidth = 260;
-        const cardHeight = 380;
-        const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
-        bg.setStrokeStyle(6, 0xffffff);
-        const nameText = this.add.text(0, -130, cardData.name, { fontSize: '38px', color: '#000', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
-        const costText = this.add.text(-90, -145, cardData.cost.toString(), { fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15, left: 10, right: 10 } }).setOrigin(0.5);
-        const descText = this.add.text(0, 20, cardData.desc, { fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 }, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
-    }
-
-    private openSettingsModal() {
-        const modal = new Modal({ scene: this, title: '환경 설정', width: 800, height: 600 });
-        const content = modal.contentContainer;
-        const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, { fontSize: '40px', color: '#ffffff', fontStyle: 'bold' }).setOrigin(0.5);
-        content.add(modeText);
-
-        const autoBtn = new Button({ scene: this, x: -220, y: 50, text: '자동 감지', variant: 'secondary', width: 180, height: 60, fontSize: '28px', onClick: () => { SettingsManager.setForceUIMode('auto'); modeText.setText(`현재 UI 모드: auto`); } });
-        const pcBtn = new Button({ scene: this, x: 0, y: 50, text: 'PC 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px', onClick: () => { SettingsManager.setForceUIMode('pc'); modeText.setText(`현재 UI 모드: pc`); } });
-        const mobileBtn = new Button({ scene: this, x: 220, y: 50, text: '모바일 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px', onClick: () => { SettingsManager.setForceUIMode('mobile'); modeText.setText(`현재 UI 모드: mobile`); } });
-        content.add([autoBtn, pcBtn, mobileBtn]);
     }
 }
