@@ -8,9 +8,9 @@ import { Button } from '../ui/Button';
 import { Tooltip } from '../ui/Tooltip';  
 import type { TooltipItem } from '../ui/Tooltip'; 
 import { SettingsManager } from '../managers/SettingsManager';
-import { KEYWORD_DICT } from '../data/keywords'; // 💡 분리된 데이터 임포트
-import { DeckModal } from '../ui/modals/DeckModal'; // 💡 덱 모달 임포트
-import { SettingsModal } from '../ui/modals/SettingsModal'; // 💡 설정 모달 임포트
+import { KEYWORD_DICT } from '../data/keywords'; 
+import { DeckModal } from '../ui/modals/DeckModal'; 
+import { SettingsModal } from '../ui/modals/SettingsModal'; 
 import type { ICardData } from '../types';
 
 interface ICardStartPos { x: number; y: number; angle: number; }
@@ -61,25 +61,25 @@ export default class BattleScene extends Phaser.Scene {
 
         this.createActors();
         
+        // 💡 하단 UI 잘림 방지를 위해 Y축을 0.85/0.94 -> 0.82/0.88로 전체 상향
         this.endTurnButton = new Button({
-            scene: this, x: width * 0.88, y: height * 0.85, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
+            scene: this, x: width * 0.88, y: height * 0.82, text: `${this.turnCount}턴 종료`, variant: 'secondary', width: 260, height: 80,
             onClick: () => { if (GameState.turn === 'player') this.endPlayerTurn(); }
         });
 
         this.drawPileBtn = new Button({
-            scene: this, x: width * 0.12, y: height * 0.9, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: width * 0.12, y: height * 0.88, text: '덱: -', variant: 'primary', width: 200, height: 60, fontSize: '32px',
             onClick: () => { new DeckModal(this, '뽑을 카드 더미', GameState.deck || []); }
         });
 
         this.discardPileBtn = new Button({
-            scene: this, x: width * 0.88, y: height * 0.94, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
+            scene: this, x: width * 0.88, y: height * 0.88, text: '버림: -', variant: 'secondary', width: 200, height: 60, fontSize: '32px',
             onClick: () => { new DeckModal(this, '버린 카드 더미', GameState.discard || []); }
         });
         
         this.turnText = this.add.text(width * 0.5, height * 0.15, '', { fontSize: '50px', color: '#ffffff', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
         
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
-            // 💡 SettingsManager 단일 진실 공급원 사용
             if (GameState.turn !== 'player' || !SettingsManager.isMobileUI(this)) return;
 
             const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
@@ -162,7 +162,8 @@ export default class BattleScene extends Phaser.Scene {
             GameState.hand.forEach((cardData, index) => {
                 const offsetFromCenter = index - (handSize - 1) / 2;
                 const targetX = startX + (index * cardSpacing);
-                const targetY = height * 0.85 + Math.abs(offsetFromCenter) * 20; 
+                // 💡 카드 렌더링 기준 Y 좌표 상향 (0.85 -> 0.82)
+                const targetY = height * 0.82 + Math.abs(offsetFromCenter) * 20; 
                 const targetAngle = offsetFromCenter * 5; 
 
                 this.createCardView(targetX, targetY, targetAngle, cardData, index, animate, index);
@@ -199,6 +200,7 @@ export default class BattleScene extends Phaser.Scene {
         this.input.setDraggable(cardContainer);
         const startPos: ICardStartPos = { x, y, angle }; 
 
+        // 💡 1. 터치(클릭) 시 선택 로직
         cardContainer.on('pointerdown', () => {
             if (GameState.turn !== 'player') return;
             if (SettingsManager.isMobileUI(this)) {
@@ -226,14 +228,12 @@ export default class BattleScene extends Phaser.Scene {
             this.tooltip.hide();
         });
 
+        // 💡 2. 드래그 시작 시 무조건 툴팁 끄지 않고, 미세 터치 방어
         cardContainer.on('dragstart', () => {
             if (GameState.turn !== 'player') return;
             this.children.bringToTop(cardContainer); 
-            this.tooltip.hide(); 
-
             if (SettingsManager.isMobileUI(this) && this.selectedCard?.container !== cardContainer) {
                 this.selectCard(cardContainer, cardData, handIndex, startPos);
-                this.tooltip.hide(); 
             }
         });
 
@@ -242,19 +242,29 @@ export default class BattleScene extends Phaser.Scene {
             cardContainer.x = dragX;
             cardContainer.y = dragY;
             cardContainer.setAngle(0); 
+            this.tooltip.hide(); // 실제로 크게 움직일 때만 툴팁을 끔
         });
 
+        // 💡 3. 미세한 떨림으로 드래그가 종료되었을 때, 선택 상태면 다시 팝업 복구!
         cardContainer.on('dragend', () => {
             if (GameState.turn !== 'player') return;
-            bg.setStrokeStyle(6, 0xffffff);
-
+            
             if (cardContainer.y < height * 0.6) {
+                bg.setStrokeStyle(6, 0xffffff);
                 this.playCard(cardData, handIndex, cardContainer); 
                 this.selectedCard = null; 
                 this.tooltip.hide();
             } else {
-                this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
-                if (SettingsManager.isMobileUI(this)) this.selectedCard = null; 
+                // 사용하지 않고 손을 뗐을 때
+                if (SettingsManager.isMobileUI(this) && this.selectedCard?.container === cardContainer) {
+                    // 선택된 카드라면 노란 테두리 유지 및 똑바로 선 팝업 위치로 복귀
+                    bg.setStrokeStyle(8, 0xffff00);
+                    this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y - 150, angle: 0, scale: 1.2, duration: 200, ease: 'Back.easeOut' });
+                    this.showCardTooltip(cardContainer, cardData);
+                } else {
+                    bg.setStrokeStyle(6, 0xffffff);
+                    this.tweens.add({ targets: cardContainer, x: startPos.x, y: startPos.y, angle: startPos.angle, scale: 1, duration: 200, ease: 'Back.easeOut' });
+                }
             }
         });
 
@@ -269,8 +279,9 @@ export default class BattleScene extends Phaser.Scene {
         this.sound.play('click');
         
         const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
-        bg.setStrokeStyle(8, 0xffff00);
+        bg.setStrokeStyle(8, 0xffff00); // 노란 테두리
         
+        // 💡 카드가 똑바로 서면서 튀어나오게 수정
         this.tweens.add({ targets: container, y: startPos.y - 150, scale: 1.2, angle: 0, duration: 150 });
         this.showCardTooltip(container, cardData);
     }
@@ -305,7 +316,7 @@ export default class BattleScene extends Phaser.Scene {
 
     private discardCardAnim(container: Phaser.GameObjects.Container, delay: number = 0) {
         const discardX = this.cameras.main.width * 0.88; 
-        const discardY = this.cameras.main.height * 0.94; 
+        const discardY = this.cameras.main.height * 0.88; // 💡 버림 위치 상향 조절
 
         container.disableInteractive(); 
         this.children.bringToTop(container);
