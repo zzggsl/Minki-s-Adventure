@@ -109,8 +109,9 @@ export class MapGenerator {
         };
     }
 
+    // src/managers/MapGenerator.ts 내부의 assignRoomTypes 함수 개편
+
     private static assignRoomTypes(nodesMap: Map<string, IMapNode>, edges: IMapEdge[], height: number) {
-        // 스팀 가이드 기준 등장 확률 가중치
         const weights = [
             { type: 'BATTLE' as NodeType, w: 45 },
             { type: 'EVENT' as NodeType, w: 22 },
@@ -119,7 +120,6 @@ export class MapGenerator {
             { type: 'SHOP' as NodeType, w: 5 }
         ];
 
-        // 💡 2층부터 13층까지만 종류를 랜덤 배정 (0층=시작, 1층=고정 배틀, 14층=보스)
         for (let y = 2; y < height - 1; y++) {
             const floorNodes = Array.from(nodesMap.values()).filter(n => n.floor === y);
             
@@ -127,19 +127,29 @@ export class MapGenerator {
                 const parents = edges.filter(e => e.to === node.id).map(e => nodesMap.get(e.from)!);
                 const siblings = edges.filter(e => parents.some(p => p.id === e.from) && e.to !== node.id).map(e => nodesMap.get(e.to)!);
 
+                // 💡 기기 변경 대응/기획 반영: 여러 경로가 겹치는 합류점인지 검사 (부모가 2개 이상)
+                // 단, 보스 직전 층(13층)은 무조건 모닥불이어야 하므로 12층 이하 중류층에서 병합되는 곳 탐색
+                if (parents.length >= 2 && y < height - 2 && y > 4) {
+                    // 확률을 줘서 겹치는 모든 곳이 보물이 되지 않도록 70% 확률로 보물상자 강제 배정
+                    if (Math.random() < 0.7) {
+                        node.type = 'TREASURE';
+                        return; // 보물상자 확정이므로 아래 랜덤 굴림 무시
+                    }
+                }
+
                 let available = [...weights];
 
-                // 💡 제약 1: 초반(5층 미만)에는 엘리트, 모닥불 등장 금지 (가혹함 방지)
+                // 제약 1: 초반(5층 미만)에는 엘리트, 모닥불 등장 금지
                 if (y < 5) {
                     available = available.filter(w => w.type !== 'ELITE' && w.type !== 'REST');
                 }
 
-                // 💡 제약 2: 보스 직전 층(13층)은 무조건 '모닥불(REST)'로 고정
+                // 제약 2: 보스 직전 층(13층)은 무조건 '모닥불(REST)'로 고정
                 if (y === height - 2) {
                     available = [{ type: 'REST', w: 100 }];
                 }
 
-                // 💡 제약 3: 엘리트, 상점, 모닥불은 2층 연속 등장 금지
+                // 제약 3: 엘리트, 상점, 모닥불은 2층 연속 등장 금지
                 const banConsecutive = ['ELITE', 'SHOP', 'REST'];
                 parents.forEach(p => {
                     if (banConsecutive.includes(p.type)) {
@@ -147,17 +157,16 @@ export class MapGenerator {
                     }
                 });
 
-                // 💡 제약 4: 같은 갈림길에서 똑같은 특수 노드가 나오지 않음 (일반 전투는 허용)
+                // 제약 4: 같은 갈림길에서 똑같은 특수 노드가 나오지 않음
                 siblings.forEach(s => {
                     if (s.type !== 'BATTLE' && s.type !== 'REST') { 
                         available = available.filter(w => w.type !== s.type);
                     }
                 });
 
-                // 룰에 의해 넣을 게 없다면 억까 방지를 위해 무조건 BATTLE 배정
                 if (available.length === 0) available = [{ type: 'BATTLE', w: 100 }];
 
-                // 가중치(확률)에 기반한 랜덤 룰렛 굴리기
+                // 가중치 확률 룰렛
                 const totalW = available.reduce((acc, curr) => acc + curr.w, 0);
                 let roll = Math.random() * totalW;
                 for (const option of available) {

@@ -102,6 +102,8 @@ export default class MapScene extends Phaser.Scene {
             edgeGraphics.strokePath();
         });
 
+        // src/scenes/MapScene.ts 내부 drawMap() 함수의 '2. 노드 그리기' 구간 수정
+
         // 2. 노드 그리기
         mapData.nodes.forEach(node => {
             const pos = getPos(node);
@@ -110,29 +112,44 @@ export default class MapScene extends Phaser.Scene {
             const isCurrent = GameState.currentNodeId === node.id;
             const baseColor = mapData.theme.nodeColors[node.type];
             
+            // 노드 기본 원형 베이스 배경 그림
             const circle = this.add.circle(pos.x, pos.y, 45, baseColor);
             
             // 상태에 따른 외곽선 하이라이트
             if (isCurrent) {
-                circle.setStrokeStyle(8, 0xffffff); // 현재 위치
+                circle.setStrokeStyle(8, 0xffffff); // 현재 밟고 있는 곳
             } else if (isPlayable) {
-                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 곳 (노란색)
+                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 활성화 구역
             } else if (isVisited) {
-                circle.setAlpha(0.4); // 지나온 곳은 어둡게
+                circle.setAlpha(0.4); // 이미 지나온 구역은 반투명화
             }
 
-            // 노드 텍스트 표시
-            const label = this.add.text(pos.x, pos.y, node.type, {
-                fontSize: '20px', color: '#fff', fontStyle: 'bold'
-            }).setOrigin(0.5);
+            this.mapContainer.add(circle);
 
-            this.mapContainer.add([circle, label]);
+            // 💡 텍스트를 제거하고 준비된 아이콘 이미지로 대체 렌더링
+            // START와 BOSS는 연출용으로 텍스트를 남기거나 별도 처리할 수 있도록 분기 예외 처리
+            if (node.type !== 'START' && node.type !== 'BOSS') {
+                const textureKey = `node_${node.type.toLowerCase()}`; // 예: node_battle, node_treasure 등
+                
+                // 에셋이 정상 로드되었는지 확인 후 스프라이트 배치
+                if (this.textures.exists(textureKey)) {
+                    const icon = this.add.sprite(pos.x, pos.y, textureKey).setScale(0.8);
+                    if (isVisited) icon.setAlpha(0.4); // 방문한 노드는 아이콘도 같이 흐리게
+                    this.mapContainer.add(icon);
+                }
+            } else {
+                // START, BOSS 노드는 기존처럼 텍스트 유지
+                const label = this.add.text(pos.x, pos.y, node.type, {
+                    fontSize: '20px', color: '#fff', fontStyle: 'bold'
+                }).setOrigin(0.5);
+                if (isVisited) label.setAlpha(0.4);
+                this.mapContainer.add(label);
+            }
 
-            // 클릭 이벤트
+            // 클릭 이벤트 및 드래그 보정 (기존 유지)
             if (isPlayable) {
                 circle.setInteractive();
                 circle.on('pointerdown', () => {
-                    // 드래그(스크롤) 중일 때는 클릭 무시
                     if (this.isDragging && Math.abs(this.input.activePointer.y - this.dragStartY) > 10) return; 
                     this.handleNodeClick(node);
                 });
