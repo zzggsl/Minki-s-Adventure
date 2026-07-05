@@ -1,13 +1,19 @@
+// src/scenes/MapScene.ts
 import Phaser from 'phaser';
 import { GameState } from '../core/GameState';
+import { MapGenerator } from '../managers/MapGenerator';
 import { TopBar } from '../ui/TopBar';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { SettingsManager } from '../managers/SettingsManager';
-import type { ICardData } from '../types';
+import { DeckModal } from '../ui/modals/DeckModal';
+import { SettingsModal } from '../ui/modals/SettingsModal';
 
 export default class MapScene extends Phaser.Scene {
     private topBar!: TopBar;
+    private mapContainer!: Phaser.GameObjects.Container;
+    
+    // 스크롤 제어용 변수
+    private isDragging = false;
+    private dragStartY = 0;
+    private cameraStartY = 0;
 
     constructor() {
         super({ key: 'MapScene' });
@@ -17,155 +23,143 @@ export default class MapScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // TopBar 공통 컴포넌트 생성 및 이벤트 연결
+        // 1. 맵 데이터가 없다면 생성 (새 게임 진입 시)
+        if (!GameState.currentMap) {
+            GameState.currentMap = MapGenerator.generateTestMap();
+            // 첫 진입 시 START 노드만 활성화
+            const startNode = GameState.currentMap.nodes.find(n => n.type === 'START');
+            if (startNode) {
+                GameState.playableNodeIds = [startNode.id];
+            }
+        }
+
+        // 2. 상단 고정 UI 렌더링
         this.topBar = new TopBar({
             scene: this,
-            onDeckClick: () => this.openDeckModal(),
-            onSettingsClick: () => this.openSettingsModal()
+            onDeckClick: () => new DeckModal(this, `마스터 덱 (총 ${GameState.masterDeck.length}장)`, GameState.masterDeck),
+            onSettingsClick: () => new SettingsModal(this)
+        });
+        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
+        
+        // 💡 중요: 카메라는 스크롤되더라도 TopBar는 화면에 고정되게 만듦
+        this.topBar.setScrollFactor(0);
+
+        // 3. 맵 그리기
+        this.mapContainer = this.add.container(0, 0);
+        this.drawMap(width, height);
+
+        // 4. 모바일 터치 드래그(스크롤) 로직 구현
+        this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+            this.isDragging = true;
+            this.dragStartY = pointer.y;
+            this.cameraStartY = this.cameras.main.scrollY;
         });
 
-        // TopBar에 현재 게임 상태 주입
-        this.topBar.refresh({
-            hp: GameState.player.hp,
-            maxHp: GameState.player.maxHp,
-            floor: GameState.floor
-        });
+        this.input.on('pointerup', () => { this.isDragging = false; });
+        this.input.on('pointerout', () => { this.isDragging = false; });
 
-        this.add.text(width / 2, 200, '다음 목적지를 선택하세요', { 
-            fontSize: '48px', color: '#ffffff', fontStyle: 'bold',
-            padding: { top: 20, bottom: 20 } // 💡 추가
-        }).setOrigin(0.5);
-
-        // 맵 노드 생성
-        this.createNode(width / 2, height / 2, '💀', 0x882222, () => {
-            this.scene.start('BattleScene');
+        this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+            if (this.isDragging) {
+                // 손가락을 움직인 만큼 카메라를 반대로 이동시킴
+                const deltaY = pointer.y - this.dragStartY;
+                this.cameras.main.scrollY = this.cameraStartY - deltaY;
+            }
         });
     }
 
-    // 맵 노드를 그리는 함수 (컨테이너로 그룹화하여 일체감 향상)
-    private createNode(x: number, y: number, label: string, color: number, onClick: () => void) {
-        // 1. 기준점을 (0, 0)으로 하여 원과 텍스트를 생성합니다.
-        const circle = this.add.circle(0, 0, 100, color);
-        circle.setStrokeStyle(6, 0xffffff);
-        
-        const text = this.add.text(0, 0, label, { 
-            fontSize: '60px', // 💡 이모지가 잘 보이게 크기 증가
-            color: '#ffffff', 
-            fontStyle: 'bold',
-            padding: { top: 15, bottom: 15 } 
-        }).setOrigin(0.5);
+    private drawMap(screenWidth: number, screenHeight: number) {
+        const mapData = GameState.currentMap!;
+        const edgeGraphics = this.add.graphics(); // 선을 그릴 객체
+        this.mapContainer.add(edgeGraphics);
 
-        // 2. 원과 텍스트를 하나의 컨테이너로 묶습니다.
-        const container = this.add.container(x, y, [circle, text]);
-        
-        // 3. 텍스트 위를 덮을 수 있도록 컨테이너 전체를 클릭 영역으로 지정합니다. (반지름이 100이니 너비/높이는 200)
-        container.setSize(200, 200);
-        container.setInteractive();
+        const floorHeight = 250; // 층간 간격
+        const startY = screenHeight * 0.8; // START 노드의 화면 하단 Y 위치
 
-        // 4. 애니메이션의 타겟(targets)을 circle이 아닌 container 전체로 지정합니다!
-        container.on('pointerover', () => {
-            circle.setStrokeStyle(10, 0xffdd00);
-            this.tweens.add({ targets: container, scale: 1.1, duration: 100 }); // 💡 같이 커짐
+        // 노드의 (X, Y) 픽셀 좌표를 계산하는 헬퍼 함수
+        const getPos = (node: any) => ({
+            x: screenWidth * node.xRatio,
+            y: startY - (node.floor * floorHeight)
         });
 
-        container.on('pointerout', () => {
-            circle.setStrokeStyle(6, 0xffffff);
-            this.tweens.add({ targets: container, scale: 1, duration: 100 }); // 💡 같이 작아짐
-        });
+        // 1. 선(Edge) 먼저 그리기 (노드 밑에 깔리도록)
+        mapData.edges.forEach(edge => {
+            const fromNode = mapData.nodes.find(n => n.id === edge.from);
+            const toNode = mapData.nodes.find(n => n.id === edge.to);
+            if (!fromNode || !toNode) return;
 
-        container.on('pointerdown', () => circle.fillColor = 0x550000);
-        
-        container.on('pointerup', () => {
-            circle.fillColor = color;
-            this.sound.play('map_node'); 
-            onClick();
-        });
-    }
+            const fromPos = getPos(fromNode);
+            const toPos = getPos(toNode);
 
-    // 시각적 덱 확인 모달 창 띄우기
-    private openDeckModal() {
-        const modal = new Modal({
-            scene: this,
-            title: `내 덱 (총 ${GameState.masterDeck.length}장)`,
-            width: 1800, 
-            height: 1200
-        });
-
-        const content = modal.contentContainer;
-        const cols = 6;              
-        const cardScale = 0.8;      
-        const cellW = 270 * cardScale + 30; 
-        const cellH = 390 * cardScale + 40; 
-        const startX = -((cols - 1) * cellW) / 2; 
-        const startY = -250;         
-
-        GameState.masterDeck.forEach((cardData, index) => {
-            const col = index % cols;
-            const row = Math.floor(index / cols);
-
-            const x = startX + (col * cellW);
-            const y = startY + (row * cellH);
-
-            const cardView = this.createVisualCard(0, 0, cardData);
-            cardView.setScale(cardScale);
+            // 지나온 길인지, 혹은 지금 갈 수 있는 길인지 판단
+            const isPassed = GameState.visitedNodeIds.includes(edge.from) && GameState.visitedNodeIds.includes(edge.to);
+            const isPlayablePath = GameState.currentNodeId === edge.from && GameState.playableNodeIds.includes(edge.to);
+            const color = (isPassed || isPlayablePath) ? mapData.theme.activeLineColor : mapData.theme.lineColor;
             
-            const cardWrapper = this.add.container(x, y, [cardView]);
-            content.add(cardWrapper);
+            edgeGraphics.lineStyle(8, color, 1);
+            edgeGraphics.beginPath();
+            edgeGraphics.moveTo(fromPos.x, fromPos.y);
+            edgeGraphics.lineTo(toPos.x, toPos.y);
+            edgeGraphics.strokePath();
+        });
+
+        // 2. 노드 그리기
+        mapData.nodes.forEach(node => {
+            const pos = getPos(node);
+            const isPlayable = GameState.playableNodeIds.includes(node.id);
+            const isVisited = GameState.visitedNodeIds.includes(node.id);
+            const isCurrent = GameState.currentNodeId === node.id;
+            const baseColor = mapData.theme.nodeColors[node.type];
+            
+            const circle = this.add.circle(pos.x, pos.y, 45, baseColor);
+            
+            // 상태에 따른 외곽선 하이라이트
+            if (isCurrent) {
+                circle.setStrokeStyle(8, 0xffffff); // 현재 위치
+            } else if (isPlayable) {
+                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 곳 (노란색)
+            } else if (isVisited) {
+                circle.setAlpha(0.4); // 지나온 곳은 어둡게
+            }
+
+            // 노드 텍스트 표시
+            const label = this.add.text(pos.x, pos.y, node.type, {
+                fontSize: '20px', color: '#fff', fontStyle: 'bold'
+            }).setOrigin(0.5);
+
+            this.mapContainer.add([circle, label]);
+
+            // 클릭 이벤트
+            if (isPlayable) {
+                circle.setInteractive();
+                circle.on('pointerdown', () => {
+                    // 드래그(스크롤) 중일 때는 클릭 무시
+                    if (this.isDragging && Math.abs(this.input.activePointer.y - this.dragStartY) > 10) return; 
+                    this.handleNodeClick(node);
+                });
+            }
         });
     }
 
-    // 시각적 카드 뷰 생성 (모달 전용)
-    private createVisualCard(x: number, y: number, cardData: ICardData): Phaser.GameObjects.Container {
-        const cardWidth = 260;
-        const cardHeight = 380;
+    private handleNodeClick(node: any) {
+        this.sound.play('click');
         
-        const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
-        bg.setStrokeStyle(6, 0xffffff);
+        // 방문 처리
+        if (GameState.currentNodeId && !GameState.visitedNodeIds.includes(GameState.currentNodeId)) {
+            GameState.visitedNodeIds.push(GameState.currentNodeId);
+        }
+        GameState.currentNodeId = node.id;
         
-        const nameText = this.add.text(0, -130, cardData.name, { 
-            fontSize: '38px', color: '#000', fontStyle: 'bold',
-            padding: { left: 10, right: 10, top: 15, bottom: 15 }
-        }).setOrigin(0.5);
-        
-        const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
-        const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
-            fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8,  
-            padding: { left: 10, right: 10, top: 15, bottom: 15 }
-        }).setOrigin(0.5);
-        
-        const descText = this.add.text(0, 20, cardData.desc, { 
-            fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 },
-            padding: { left: 10, right: 10, top: 15, bottom: 15 }
-        }).setOrigin(0.5);
+        // 💡 다음으로 갈 수 있는 노드 계산
+        const nextEdges = GameState.currentMap!.edges.filter(e => e.from === node.id);
+        GameState.playableNodeIds = nextEdges.map(e => e.to);
 
-        return this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
-    }
-
-    // 설정 모달 창 띄우기
-    private openSettingsModal() {
-        const modal = new Modal({
-            scene: this, title: '환경 설정', width: 800, height: 600
-        });
-
-        const content = modal.contentContainer;
-        const modeText = this.add.text(0, -50, `현재 UI 모드: ${SettingsManager.settings.forceUIMode}`, {
-            fontSize: '40px', color: '#ffffff', fontStyle: 'bold',
-        }).setOrigin(0.5);
-        content.add(modeText);
-
-        const autoBtn = new Button({
-            scene: this, x: -220, y: 50, text: '자동 감지', variant: 'secondary', width: 180, height: 60, fontSize: '28px',
-            onClick: () => { SettingsManager.setForceUIMode('auto'); modeText.setText(`현재 UI 모드: auto`); }
-        });
-        const pcBtn = new Button({
-            scene: this, x: 0, y: 50, text: 'PC 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
-            onClick: () => { SettingsManager.setForceUIMode('pc'); modeText.setText(`현재 UI 모드: pc`); }
-        });
-        const mobileBtn = new Button({
-            scene: this, x: 220, y: 50, text: '모바일 모드', variant: 'primary', width: 180, height: 60, fontSize: '28px',
-            onClick: () => { SettingsManager.setForceUIMode('mobile'); modeText.setText(`현재 UI 모드: mobile`); }
-        });
-
-        content.add([autoBtn, pcBtn, mobileBtn]);
+        // 노드 타입별 씬 이동
+        if (node.type === 'START' || node.type === 'REST' || node.type === 'EVENT') {
+            // 아직 구현 안 된 노드들은 단순히 맵을 리프레시하여 이동만 처리
+            this.scene.restart(); 
+        } else {
+            // 전투(BATTLE), 엘리트, 보스는 전투 씬으로
+            this.scene.start('BattleScene');
+        }
     }
 }
