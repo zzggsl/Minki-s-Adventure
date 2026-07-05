@@ -25,12 +25,12 @@ export default class MapScene extends Phaser.Scene {
 
         // 1. 맵 데이터가 없다면 생성 (새 게임 진입 시)
         if (!GameState.currentMap) {
-            GameState.currentMap = MapGenerator.generateTestMap();
-            // 첫 진입 시 START 노드만 활성화
-            const startNode = GameState.currentMap.nodes.find(n => n.type === 'START');
-            if (startNode) {
-                GameState.playableNodeIds = [startNode.id];
-            }
+            // 💡 고정 맵에서 -> 절차적 랜덤 맵 생성기로 단 한 줄 교체!
+            GameState.currentMap = MapGenerator.generateProceduralMap(1); 
+            
+            // 첫 진입 시 START 노드 모두 활성화
+            const startNodes = GameState.currentMap.nodes.filter(n => n.type === 'START');
+            GameState.playableNodeIds = startNodes.map(n => n.id);
         }
 
         // 2. 상단 고정 UI 렌더링
