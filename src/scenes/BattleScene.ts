@@ -126,11 +126,18 @@ export default class BattleScene extends Phaser.Scene {
         // src/scenes/BattleScene.ts의 createActors() 내부
 
         // 💡 2. 에너지 보석 스케일을 2.5 -> 1.8로 줄이고 폰트 크기도 44px로 조절
-        const manaBg = this.add.sprite(0, 0, 'energy').setScale(1.8);
-        this.manaText = this.add.text(0, 0, '', { fontSize: '44px', color: '#ffffff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
+         const manaBg = this.add.sprite(0, 0, 'energy').setScale(1.8);
+        this.manaText = this.add.text(0, 0, '', { 
+            fontSize: '44px', 
+            color: '#ffffff', 
+            fontStyle: 'bold', 
+            stroke: '#000000', 
+            strokeThickness: 8, 
+            padding: { top: 15, bottom: 15 } 
+        }).setOrigin(0.5);
         
-        // 💡 컨테이너의 Y 위치를 height * 0.8 -> height * 0.82 로 아주 살짝 내림
-        this.manaContainer = this.add.container(width * 0.15, height * 0.82, [manaBg, this.manaText]);
+        // 💡 마나 위치 조정: 가로 비율을 더 왼쪽(width * 0.15 -> 0.1), 세로 비율을 더 위쪽(height * 0.82 -> 0.76)으로 수정
+        this.manaContainer = this.add.container(width * 0.1, height * 0.76, [manaBg, this.manaText]);
 
         const blockBg = this.add.sprite(0, 0, 'shield').setScale(0.08);
         this.blockText = this.add.text(0, 0, '', { fontSize: '36px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 6, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
