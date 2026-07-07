@@ -23,6 +23,7 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.setPath('assets/sprites/');
         
         // 기존 전투 및 캐릭터 에셋
+        this.load.setPath('assets/sprites/');
         this.load.image('player', 'player.png');
         this.load.image('enemy_gunha', 'gunha.png');
         this.load.image('energy', 'energy.png');
@@ -44,13 +45,25 @@ export default class PreloadScene extends Phaser.Scene {
         // 🎵 2. 효과음 및 오디오 에셋 로드
         // --------------------------------------------------
         this.load.setPath('assets/sounds/');
-        
         this.load.audio('click', 'click.mp3');
         this.load.audio('error', 'error.mp3');
         this.load.audio('map_node', 'map_node.mp3');
         this.load.audio('hit', 'hit.wav');
         this.load.audio('shieldappear', 'shieldappear.mp3');
         this.load.audio('shieldblock', 'shieldblock.wav');
+
+        // 에셋 로드 씬의 preload() 내부
+        this.load.image('node_battle', 'assets/battle.png');
+        this.load.image('node_elite', 'assets/elite.png');
+        this.load.image('node_event', 'assets/event.png');
+        this.load.image('node_shop', 'assets/shop.png');
+        this.load.image('node_rest', 'assets/rest.png');
+        this.load.image('node_treasure', 'assets/treasure.png');
+        
+        // shuffle 1~7 연속 로드
+        for (let i = 1; i <= 7; i++) {
+            this.load.audio(`shuffle${i}`, `shuffle${i}.m4a`);
+        }
     }
 
     create() {
