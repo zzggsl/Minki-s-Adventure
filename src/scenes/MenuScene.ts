@@ -9,6 +9,18 @@ export default class MenuScene extends Phaser.Scene {
         super({ key: 'MenuScene' });
     }
 
+    // 💡 게임 시작 전 필요한 이미지를 모두 메모리에 올려두는 함수
+    preload() {
+        // public 폴더 바로 아래에 이미지가 있을 경우의 경로입니다.
+        // 만약 public/assets/ 폴더에 넣으셨다면 'assets/battle.png'로 적어주세요.
+        this.load.image('node_battle', 'battle.png');
+        this.load.image('node_elite', 'elite.png');
+        this.load.image('node_event', 'event.png');
+        this.load.image('node_shop', 'shop.png');
+        this.load.image('node_rest', 'rest.png');
+        this.load.image('node_treasure', 'treasure.png');
+    }
+
     create() {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
