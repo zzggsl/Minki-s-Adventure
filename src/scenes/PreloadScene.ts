@@ -38,6 +38,7 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.image('node_rest', 'rest.png');
         this.load.image('node_treasure', 'treasure.png');
         this.load.image('map_bg', 'map_bg.png'); // 나인 슬라이스용 고화질 지도 배경 종이
+        this.load.image('map_paper', 'map_paper.png'); 
 
         // --------------------------------------------------
         // 🎵 2. 효과음 및 오디오 에셋 로드

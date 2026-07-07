@@ -1,8 +1,8 @@
+// src/managers/MapGenerator.ts
 import type { IMapData, IMapNode, IMapEdge, NodeType } from '../types';
 
 export class MapGenerator {
     static generateTestMap(): IMapData {
-        // (UI 테스트용 고정 맵 코드는 생략/유지 무방합니다)
         return { act: 1, theme: { backgroundKey: '', nodeColors: {} as any, lineColor: 0, activeLineColor: 0 }, nodes: [], edges: [] };
     }
 
@@ -28,11 +28,10 @@ export class MapGenerator {
         // 💡 3. 2층에서 갈라질 3~4갈래 길(Walker) 출발 지점 무작위 세팅
         const numPaths = 4; // 4갈래 분기
         let paths: number[] = [];
-        while (paths.length < numPaths) {
-            let r = Math.floor(Math.random() * WIDTH);
-            if (!paths.includes(r)) paths.push(r);
-        }
-        paths.sort((a, b) => a - b); // 선이 교차하지 않도록 X좌표 오름차순 정렬
+        
+        // 💡 [문제 해결 4] 경로 중간 빈 공간 해결: 출발 지점을 중앙 근처 범위로 제한합니다.
+        const center = Math.floor(WIDTH / 2); // WIDTH 7일 경우 3
+        paths = [center - 1, center, center + 1, center + 2].sort((a, b) => a - b); // 💡 경로를 촘촘하게 중앙 근처 X좌표로 고정
 
         // 1층(첫 전투)에서 2층의 각 갈래로 퍼져나가는 선 긋기
         paths.forEach(x => {
@@ -47,18 +46,15 @@ export class MapGenerator {
             for (let i = 0; i < numPaths; i++) {
                 let currentX = paths[i];
                 
-                // 위로 갈 때 이동할 수 있는 범위 (왼쪽, 직진, 오른쪽)
                 let minX = Math.max(0, currentX - 1);
                 let maxX = Math.min(WIDTH - 1, currentX + 1);
 
-                // 경로가 꼬이지 않도록(Cross 방지) 옆 길의 위치를 고려해 범위 좁힘
                 if (i > 0) minX = Math.max(minX, nextPaths[i - 1]);
                 if (i < numPaths - 1) maxX = Math.min(maxX, paths[i + 1] + 1);
 
                 const validOptions = [];
                 for (let nx = minX; nx <= maxX; nx++) validOptions.push(nx);
                 
-                // 갇혔다면 옆 경로와 병합
                 const nextX = validOptions.length > 0 
                     ? validOptions[Math.floor(Math.random() * validOptions.length)] 
                     : nextPaths[i - 1];
@@ -109,8 +105,6 @@ export class MapGenerator {
         };
     }
 
-    // src/managers/MapGenerator.ts 내부의 assignRoomTypes 함수 개편
-
     private static assignRoomTypes(nodesMap: Map<string, IMapNode>, edges: IMapEdge[], height: number) {
         const weights = [
             { type: 'BATTLE' as NodeType, w: 45 },
@@ -127,29 +121,16 @@ export class MapGenerator {
                 const parents = edges.filter(e => e.to === node.id).map(e => nodesMap.get(e.from)!);
                 const siblings = edges.filter(e => parents.some(p => p.id === e.from) && e.to !== node.id).map(e => nodesMap.get(e.to)!);
 
-                // 💡 기기 변경 대응/기획 반영: 여러 경로가 겹치는 합류점인지 검사 (부모가 2개 이상)
-                // 단, 보스 직전 층(13층)은 무조건 모닥불이어야 하므로 12층 이하 중류층에서 병합되는 곳 탐색
-                if (parents.length >= 2 && y < height - 2 && y > 4) {
-                    // 확률을 줘서 겹치는 모든 곳이 보물이 되지 않도록 70% 확률로 보물상자 강제 배정
-                    if (Math.random() < 0.7) {
-                        node.type = 'TREASURE';
-                        return; // 보물상자 확정이므로 아래 랜덤 굴림 무시
-                    }
-                }
-
                 let available = [...weights];
 
-                // 제약 1: 초반(5층 미만)에는 엘리트, 모닥불 등장 금지
                 if (y < 5) {
                     available = available.filter(w => w.type !== 'ELITE' && w.type !== 'REST');
                 }
 
-                // 제약 2: 보스 직전 층(13층)은 무조건 '모닥불(REST)'로 고정
                 if (y === height - 2) {
                     available = [{ type: 'REST', w: 100 }];
                 }
 
-                // 제약 3: 엘리트, 상점, 모닥불은 2층 연속 등장 금지
                 const banConsecutive = ['ELITE', 'SHOP', 'REST'];
                 parents.forEach(p => {
                     if (banConsecutive.includes(p.type)) {
@@ -157,7 +138,6 @@ export class MapGenerator {
                     }
                 });
 
-                // 제약 4: 같은 갈림길에서 똑같은 특수 노드가 나오지 않음
                 siblings.forEach(s => {
                     if (s.type !== 'BATTLE' && s.type !== 'REST') { 
                         available = available.filter(w => w.type !== s.type);
@@ -166,7 +146,6 @@ export class MapGenerator {
 
                 if (available.length === 0) available = [{ type: 'BATTLE', w: 100 }];
 
-                // 가중치 확률 룰렛
                 const totalW = available.reduce((acc, curr) => acc + curr.w, 0);
                 let roll = Math.random() * totalW;
                 for (const option of available) {

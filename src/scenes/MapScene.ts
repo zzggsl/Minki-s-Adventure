@@ -10,7 +10,6 @@ export default class MapScene extends Phaser.Scene {
     private topBar!: TopBar;
     private mapContainer!: Phaser.GameObjects.Container;
     
-    // 스크롤 제어용 변수
     private isDragging = false;
     private dragStartY = 0;
     private cameraStartY = 0;
@@ -23,29 +22,24 @@ export default class MapScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // 1. 맵 데이터가 없다면 생성 (새 게임 진입 시)
         if (!GameState.currentMap) {
             GameState.currentMap = MapGenerator.generateProceduralMap(1); 
             
-            // 첫 진입 시 START 노드 모두 활성화
             const startNodes = GameState.currentMap.nodes.filter(n => n.type === 'START');
             GameState.playableNodeIds = startNodes.map(n => n.id);
         }
 
-        // 2. 상단 고정 UI 렌더링
         this.topBar = new TopBar({
             scene: this,
             onDeckClick: () => new DeckModal(this, `마스터 덱 (총 ${GameState.masterDeck.length}장)`, GameState.masterDeck),
             onSettingsClick: () => new SettingsModal(this)
         });
         this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
-        this.topBar.setScrollFactor(0); // 상단바 화면 고정
+        this.topBar.setScrollFactor(0); 
 
-        // 3. 맵 컨테이너 생성
         this.mapContainer = this.add.container(0, 0);
         this.drawMap(width, height);
 
-        // 4. 모바일 터치 드래그(스크롤) 로직 구현
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
             this.isDragging = true;
             this.dragStartY = pointer.y;
@@ -65,30 +59,26 @@ export default class MapScene extends Phaser.Scene {
 
     private drawMap(screenWidth: number, screenHeight: number) {
         const mapData = GameState.currentMap!;
-        const floorHeight = 250; // 층간 간격
-        const totalMapHeight = floorHeight * 16; // 전체 지도 총 높이 계산 (약 4000px)
-        const startY = screenHeight * 0.8; // START 노드의 화면 하단 Y 위치
+        const floorHeight = 180; 
+        const totalMapHeight = floorHeight * 16; 
+        const startY = screenHeight * 0.8; 
 
-        // 💡 [핵심: 나인 슬라이스 배경 추가] 
-        // 에셋(`map_bg`)이 메모리에 로드되어 있다면, 늘려도 모서리가 깨지지 않는 두루마리 지도를 생성합니다.
-        if (this.textures.exists('map_bg')) {
-            const bg = this.add.nineslice(
+        // 💡 [문제 해결 3 적용] 화질 저하가 없는 무한 타일링(도배) 방식!
+        // 가운데 종이 조각(map_paper)을 가져와서 가로세로로 계속 이어 붙여 4000px짜리 거대한 고화질 배경을 만듭니다.
+        if (this.textures.exists('map_paper')) {
+            const bg = this.add.tileSprite(
                 screenWidth / 2, 
-                startY - (totalMapHeight / 2) + 100, // 지도의 정중앙 Y축 좌표 계산
-                'map_bg', 
-                undefined, // 프레임 지정을 사용하지 않으므로 undefined
+                startY - (totalMapHeight / 2) + 100, 
                 screenWidth, 
-                totalMapHeight + 300, // 위아래 여백을 위해 전체 높이보다 살짝 더 길게 주축 조정
-                60, 60, 60, 60 // 💡 중요: 이미지 모서리에서 안쪽으로 몇 픽셀(나무 테두리 두께)을 보호할 것인가 (Left, Right, Top, Bottom)
+                totalMapHeight + 300, 
+                'map_paper' 
             );
-            // 맵 컨테이너에 가장 먼저 추가하여 선과 노드 밑에 깔리도록 책임 분리
             this.mapContainer.add(bg);
         }
 
-        const edgeGraphics = this.add.graphics(); // 선을 그릴 객체
+        const edgeGraphics = this.add.graphics();
         this.mapContainer.add(edgeGraphics);
 
-        // 노드의 (X, Y) 픽셀 좌표를 계산하는 헬퍼 함수
         const getPos = (node: any) => ({
             x: screenWidth * node.xRatio,
             y: startY - (node.floor * floorHeight)
@@ -121,30 +111,28 @@ export default class MapScene extends Phaser.Scene {
             const isVisited = GameState.visitedNodeIds.includes(node.id);
             const isCurrent = GameState.currentNodeId === node.id;
             
-            // 유색 배경 원형을 투명화(Alpha: 0)하여 영역만 잡고, 테두리용 링 연출만 남겨둡니다.
-            const circle = this.add.circle(pos.x, pos.y, 45, 0x000000, 0); 
+            const circle = this.add.circle(pos.x, pos.y, 45, 0x000000, 1); 
             
             if (isCurrent) {
-                circle.setStrokeStyle(6, 0xffffff); // 현재 위치 링
+                circle.setStrokeStyle(6, 0xffffff);
             } else if (isPlayable) {
-                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 곳 활성화 노란 링
+                circle.setStrokeStyle(6, 0xffff00);
             }
 
             if (isVisited) circle.setAlpha(0.3);
             this.mapContainer.add(circle);
 
-            // 아이콘 이미지 배치
             if (node.type !== 'START' && node.type !== 'BOSS') {
                 const textureKey = `node_${node.type.toLowerCase()}`;
                 
                 if (this.textures.exists(textureKey)) {
                     const icon = this.add.sprite(pos.x, pos.y, textureKey);
-                    icon.setDisplaySize(85, 85); // 아이콘 크기 시원하게 확대
+                    icon.setDisplaySize(110, 110); 
 
                     if (isVisited) {
                         icon.setAlpha(0.3); 
                     } else if (!isPlayable && !isCurrent) {
-                        icon.setAlpha(0.6); // 아직 갈 수 없는 먼 미래 노드는 살짝 어둡게
+                        icon.setAlpha(0.6); 
                     }
                     this.mapContainer.add(icon);
                 }
@@ -156,7 +144,6 @@ export default class MapScene extends Phaser.Scene {
                 this.mapContainer.add(label);
             }
 
-            // 클릭 이벤트 및 모바일 드래그 판정 보정
             if (isPlayable) {
                 circle.setInteractive();
                 circle.on('pointerdown', () => {
