@@ -23,9 +23,8 @@ export default class MapScene extends Phaser.Scene {
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
 
-        // 1. 맵 데이터가 없다면 생성 (새 게임 진입 시)
+        // 1. 맵 데이터가 없다면 생성 (새 게임 진입 시 슬더슬 2 스타일 알고리즘 호출)
         if (!GameState.currentMap) {
-            // 💡 고정 맵에서 -> 절차적 랜덤 맵 생성기로 단 한 줄 교체!
             GameState.currentMap = MapGenerator.generateProceduralMap(1); 
             
             // 첫 진입 시 START 노드 모두 활성화
@@ -41,7 +40,7 @@ export default class MapScene extends Phaser.Scene {
         });
         this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
         
-        // 💡 중요: 카메라는 스크롤되더라도 TopBar는 화면에 고정되게 만듦
+        // 카메라는 스크롤되더라도 TopBar는 화면에 고정되게 만듦
         this.topBar.setScrollFactor(0);
 
         // 3. 맵 그리기
@@ -60,7 +59,6 @@ export default class MapScene extends Phaser.Scene {
 
         this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
             if (this.isDragging) {
-                // 손가락을 움직인 만큼 카메라를 반대로 이동시킴
                 const deltaY = pointer.y - this.dragStartY;
                 this.cameras.main.scrollY = this.cameraStartY - deltaY;
             }
@@ -102,8 +100,6 @@ export default class MapScene extends Phaser.Scene {
             edgeGraphics.strokePath();
         });
 
-        // src/scenes/MapScene.ts 내부 drawMap() 함수의 '2. 노드 그리기' 구간 수정
-
         // 2. 노드 그리기
         mapData.nodes.forEach(node => {
             const pos = getPos(node);
@@ -112,29 +108,30 @@ export default class MapScene extends Phaser.Scene {
             const isCurrent = GameState.currentNodeId === node.id;
             const baseColor = mapData.theme.nodeColors[node.type];
             
-            // 노드 기본 원형 베이스 배경 그림
+            // 노드 기본 원형 배경 그림
             const circle = this.add.circle(pos.x, pos.y, 45, baseColor);
             
             // 상태에 따른 외곽선 하이라이트
             if (isCurrent) {
-                circle.setStrokeStyle(8, 0xffffff); // 현재 밟고 있는 곳
+                circle.setStrokeStyle(8, 0xffffff); // 현재 위치
             } else if (isPlayable) {
-                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 활성화 구역
+                circle.setStrokeStyle(6, 0xffff00); // 갈 수 있는 곳 (노란색 테두리)
             } else if (isVisited) {
-                circle.setAlpha(0.4); // 이미 지나온 구역은 반투명화
+                circle.setAlpha(0.4); // 지나온 곳은 어둡게
             }
 
             this.mapContainer.add(circle);
 
-            // 💡 텍스트를 제거하고 준비된 아이콘 이미지로 대체 렌더링
-            // START와 BOSS는 연출용으로 텍스트를 남기거나 별도 처리할 수 있도록 분기 예외 처리
+            // 💡 텍스트 대신 준비된 에셋 폴더 아이콘 이미지로 대체 렌더링
             if (node.type !== 'START' && node.type !== 'BOSS') {
                 const textureKey = `node_${node.type.toLowerCase()}`; // 예: node_battle, node_treasure 등
                 
-                // 에셋이 정상 로드되었는지 확인 후 스프라이트 배치
                 if (this.textures.exists(textureKey)) {
-                    const icon = this.add.sprite(pos.x, pos.y, textureKey).setScale(0.8);
-                    if (isVisited) icon.setAlpha(0.4); // 방문한 노드는 아이콘도 같이 흐리게
+                    const icon = this.add.sprite(pos.x, pos.y, textureKey);
+                    // 💡 거대한 원본 크기에 상관없이 가로세로 60x60 픽셀로 완벽히 크기 고정!
+                    icon.setDisplaySize(60, 60); 
+
+                    if (isVisited) icon.setAlpha(0.4); // 방문한 노드는 아이콘도 흐리게
                     this.mapContainer.add(icon);
                 }
             } else {
@@ -146,7 +143,7 @@ export default class MapScene extends Phaser.Scene {
                 this.mapContainer.add(label);
             }
 
-            // 클릭 이벤트 및 드래그 보정 (기존 유지)
+            // 클릭 이벤트 및 드래그 보정
             if (isPlayable) {
                 circle.setInteractive();
                 circle.on('pointerdown', () => {
@@ -166,16 +163,15 @@ export default class MapScene extends Phaser.Scene {
         }
         GameState.currentNodeId = node.id;
         
-        // 💡 다음으로 갈 수 있는 노드 계산
+        // 다음으로 갈 수 있는 노드 계산
         const nextEdges = GameState.currentMap!.edges.filter(e => e.from === node.id);
         GameState.playableNodeIds = nextEdges.map(e => e.to);
 
         // 노드 타입별 씬 이동
         if (node.type === 'START' || node.type === 'REST' || node.type === 'EVENT') {
-            // 아직 구현 안 된 노드들은 단순히 맵을 리프레시하여 이동만 처리
             this.scene.restart(); 
         } else {
-            // 전투(BATTLE), 엘리트, 보스는 전투 씬으로
+            // 전투(BATTLE), 엘리트, 보스는 전투 씬으로 이동
             this.scene.start('BattleScene');
         }
     }
