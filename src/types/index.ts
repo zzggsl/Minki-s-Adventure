@@ -14,6 +14,9 @@ export interface ICardData {
 }
 
 export interface ICharacter {
+    id?: string;          // 💡 적 식별용 (예: 'snail')
+    name?: string;        // 💡 UI에 표시될 이름
+    spriteKey?: string;   // 💡 렌더링할 이미지 에셋 키
     hp: number;
     maxHp: number;
     mana?: number;
@@ -22,7 +25,7 @@ export interface ICharacter {
     block?: number;  
 }
 
-// 💡 enum 대신 유니온 타입으로 선언하여 erasableSyntaxOnly 에러 원천 차단
+// enum 대신 유니온 타입으로 선언하여 에러 원천 차단
 export type NodeType = 'START' | 'BATTLE' | 'ELITE' | 'EVENT' | 'SHOP' | 'REST' | 'TREASURE' | 'BOSS';
 
 export interface IMapEdge {
