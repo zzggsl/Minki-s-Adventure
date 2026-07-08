@@ -23,6 +23,7 @@ export interface ICharacter {
     maxMana?: number;
     intent?: { type: string; value: number };
     block?: number;  
+    gold?: number; // 💡 골드 속성 추가!
 }
 
 // enum 대신 유니온 타입으로 선언하여 에러 원천 차단

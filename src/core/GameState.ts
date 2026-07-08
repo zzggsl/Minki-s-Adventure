@@ -16,7 +16,7 @@ const getStartingDeck = (): ICardData[] => {
 };
 
 export const GameState = {
-    player: { hp: 30, maxHp: 30, block: 0, mana: 3, maxMana: 3 } as ICharacter,
+    player: { hp: 30, maxHp: 30, block: 0, mana: 3, maxMana: 3, gold: 0 } as ICharacter,
     enemy: { hp: 25, maxHp: 25, block: 0, intent: { type: 'attack', value: 8 } } as ICharacter,
     
     // 💡 텅 비어있던 영구 덱에 시작 카드 8장을 채워 넣습니다!
