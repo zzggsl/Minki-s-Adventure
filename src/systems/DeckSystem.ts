@@ -1,13 +1,15 @@
 import { GameState } from '../core/GameState';
 import { EventBus } from '../core/EventBus';
-import { CardDatabase } from '../data/cards';
+import { CARD_DB } from '../data/cards';
+
+const findCard = (id: string) => CARD_DB.find(c => c.id === id)!;
 
 export class DeckSystem {
     // 💡 게임 최초 1회 실행: 기본 덱 10장 지급
     static initMasterDeck() {
         GameState.masterDeck = [
-            ...Array(5).fill(CardDatabase['strike']),
-            ...Array(5).fill(CardDatabase['defend'])
+            ...Array(5).fill(findCard('strike')),
+            ...Array(5).fill(findCard('defend'))
         ];
     }
 
@@ -54,7 +56,7 @@ export class DeckSystem {
 
     // 💡 전투 승리 후, 선택한 전리품 카드를 영구 덱에 추가
     static addCardToMasterDeck(cardId: string) {
-        const card = CardDatabase[cardId];
+        const card = CARD_DB.find(c => c.id === cardId);
         if (card) {
             GameState.masterDeck.push(card);
         }

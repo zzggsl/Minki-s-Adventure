@@ -6,6 +6,7 @@ import { TopBar } from '../ui/TopBar';
 import { DeckModal } from '../ui/modals/DeckModal';
 import { SettingsModal } from '../ui/modals/SettingsModal';
 import { EnemyFactory } from '../managers/EnemyFactory'; // 💡 import 문은 반드시 맨 위에!
+import { SaveSystem } from '../systems/SaveSystem';
 
 export default class MapScene extends Phaser.Scene {
     private topBar!: TopBar;
@@ -29,6 +30,9 @@ export default class MapScene extends Phaser.Scene {
             const startNodes = GameState.currentMap.nodes.filter(n => n.type === 'START');
             GameState.playableNodeIds = startNodes.map(n => n.id);
         }
+
+        // 💡 맵으로 돌아올 때마다(전투 승리 후, 노드 이동 후 등) 자동 저장
+        SaveSystem.saveGame();
 
         this.topBar = new TopBar({
             scene: this,

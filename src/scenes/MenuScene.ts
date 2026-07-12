@@ -56,7 +56,12 @@ export default class MenuScene extends Phaser.Scene {
 
     private initNewGame() {
         GameState.floor = 1;
-        GameState.player.hp = GameState.player.maxHp; 
+        GameState.player.hp = GameState.player.maxHp;
+        // 💡 이전 판의 맵 진행 상황을 남겨두면 새 게임이 옛 지도/방문 기록을 물려받으므로 함께 초기화
+        GameState.currentMap = null;
+        GameState.currentNodeId = null;
+        GameState.visitedNodeIds = [];
+        GameState.playableNodeIds = [];
         GameState.masterDeck = [
             { id: `strike_${Date.now()}_1`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
             { id: `strike_${Date.now()}_2`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
