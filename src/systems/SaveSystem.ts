@@ -10,6 +10,7 @@ export class SaveSystem {
         const saveData = {
             playerHp: GameState.player.hp,
             playerMaxHp: GameState.player.maxHp,
+            playerGold: GameState.player.gold ?? 0,
             masterDeck: GameState.masterDeck,
             floor: GameState.floor,
             currentMap: GameState.currentMap,
@@ -33,6 +34,7 @@ export class SaveSystem {
             const saveData = JSON.parse(saveString);
             GameState.player.hp = saveData.playerHp;
             GameState.player.maxHp = saveData.playerMaxHp;
+            GameState.player.gold = saveData.playerGold ?? 0;
             GameState.masterDeck = saveData.masterDeck;
             GameState.floor = saveData.floor;
             GameState.currentMap = saveData.currentMap ?? null;
@@ -54,6 +56,7 @@ export class SaveSystem {
     // 💡 4. 게임 완전 초기화 (새 게임 시작 시)
     static resetGame() {
         GameState.player.hp = GameState.player.maxHp;
+        GameState.player.gold = 0;
         GameState.floor = 1;
         GameState.masterDeck = [];
         GameState.currentMap = null;

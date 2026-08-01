@@ -1,16 +1,12 @@
-import { GameState } from '../core/GameState';
+import { GameState, getStartingDeck } from '../core/GameState';
 import { EventBus } from '../core/EventBus';
 import { CARD_DB } from '../data/cards';
 
-const findCard = (id: string) => CARD_DB.find(c => c.id === id)!;
-
 export class DeckSystem {
-    // 💡 게임 최초 1회 실행: 기본 덱 10장 지급
+    // 💡 게임 최초 1회 실행: 기본 덱 지급
+    // getStartingDeck()은 매번 새 객체를 반환하므로 카드별 강화가 서로를 오염시키지 않는다.
     static initMasterDeck() {
-        GameState.masterDeck = [
-            ...Array(5).fill(findCard('strike')),
-            ...Array(5).fill(findCard('defend'))
-        ];
+        GameState.masterDeck = getStartingDeck();
     }
 
     // 💡 전투 시작: 영구 덱을 복사하여 이번 전투용 덱 생성
@@ -55,10 +51,11 @@ export class DeckSystem {
     }
 
     // 💡 전투 승리 후, 선택한 전리품 카드를 영구 덱에 추가
+    // CARD_DB 원본이 아닌 복사본을 넣어야 강화 시 카드 풀이 오염되지 않는다.
     static addCardToMasterDeck(cardId: string) {
         const card = CARD_DB.find(c => c.id === cardId);
         if (card) {
-            GameState.masterDeck.push(card);
+            GameState.masterDeck.push({ ...card, id: `${card.id}_${Date.now()}` });
         }
     }
 }

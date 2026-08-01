@@ -13,12 +13,14 @@ export interface TopBarData {
     hp: number;
     maxHp: number;
     floor: number;
+    gold?: number;
 }
 
 export class TopBar extends Phaser.GameObjects.Container {
     private bg: Phaser.GameObjects.Rectangle;
     private hpText: Phaser.GameObjects.Text;
     private floorText: Phaser.GameObjects.Text;
+    private goldText: Phaser.GameObjects.Text;
     
     private deckButton: Button;
     private settingsButton: Button;
@@ -42,6 +44,11 @@ export class TopBar extends Phaser.GameObjects.Container {
         this.hpText = config.scene.add.text(250, barHeight / 2, 'HP: - / -', {
             fontSize: '32px', color: '#ffaaaa', fontStyle: 'bold',
             padding: { top: 15, bottom: 15 } // 💡 추가
+        }).setOrigin(0, 0.5);
+
+        this.goldText = config.scene.add.text(600, barHeight / 2, '💰 0', {
+            fontSize: '32px', color: '#ffdd00', fontStyle: 'bold',
+            padding: { top: 15, bottom: 15 }
         }).setOrigin(0, 0.5);
 
         // 3. 오른쪽 버튼들 (미리 만들어둔 Button 클래스 재사용!)
@@ -70,7 +77,7 @@ export class TopBar extends Phaser.GameObjects.Container {
         });
 
         // 4. 컴포넌트 조립
-        this.add([this.bg, this.floorText, this.hpText, this.settingsButton, this.deckButton]);
+        this.add([this.bg, this.floorText, this.hpText, this.goldText, this.settingsButton, this.deckButton]);
 
         // 5. 씬에 등록하고 항상 맨 위에 보이도록 심도(Depth) 설정
         config.scene.add.existing(this);
@@ -83,5 +90,6 @@ export class TopBar extends Phaser.GameObjects.Container {
     public refresh(data: TopBarData) {
         this.floorText.setText(`층수: ${data.floor}`);
         this.hpText.setText(`HP: ${data.hp} / ${data.maxHp}`);
+        this.goldText.setText(`💰 ${data.gold ?? 0}`);
     }
 }

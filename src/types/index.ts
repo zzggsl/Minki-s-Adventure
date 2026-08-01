@@ -8,9 +8,10 @@ export interface ICardData {
     cost: number;
     desc: string;
     type: CardType;
-    value?: number;  
-    damage?: number; 
-    block?: number;  
+    value?: number;
+    damage?: number;
+    block?: number;
+    upgraded?: boolean; // 💡 모닥불에서 강화된 카드 여부 (중복 강화 방지)
 }
 
 export interface ICharacter {
@@ -53,4 +54,48 @@ export interface IMapData {
     theme: IMapTheme;
     nodes: IMapNode[];
     edges: IMapEdge[];
+}
+
+// ===== 미지의 이벤트(EVENT 노드) =====
+
+/**
+ * 이벤트 선택지가 일으키는 효과.
+ * UPGRADE_CARD / REMOVE_CARD는 플레이어가 카드를 골라야 하므로 씬에서 별도 처리한다.
+ */
+export type EventEffectType =
+    | 'HEAL'            // 체력 회복
+    | 'DAMAGE'          // 체력 감소
+    | 'MAX_HP'          // 최대 체력 증감
+    | 'GOLD'            // 골드 증감
+    | 'ADD_RANDOM_CARD' // 무작위 카드 1장 획득
+    | 'UPGRADE_CARD'    // 카드 1장 강화 (선택 필요)
+    | 'REMOVE_CARD';    // 카드 1장 제거 (선택 필요)
+
+export interface IEventEffect {
+    type: EventEffectType;
+    value?: number;
+}
+
+export interface IEventChoice {
+    text: string;
+    effects: IEventEffect[];
+    /** 선택 후 보여줄 결과 문구 */
+    resultText: string;
+    /** 이 선택지를 고르는 데 필요한 최소 골드 (없으면 조건 없음) */
+    requiresGold?: number;
+}
+
+export interface IEventData {
+    id: string;
+    title: string;
+    desc: string;
+    choices: IEventChoice[];
+}
+
+// ===== 상점(SHOP 노드) =====
+
+export interface IShopItem {
+    card: ICardData;
+    price: number;
+    soldOut: boolean;
 }

@@ -7,6 +7,7 @@ import { DeckModal } from '../ui/modals/DeckModal';
 import { SettingsModal } from '../ui/modals/SettingsModal';
 import { EnemyFactory } from '../managers/EnemyFactory'; // 💡 import 문은 반드시 맨 위에!
 import { SaveSystem } from '../systems/SaveSystem';
+import type { IMapNode } from '../types';
 
 export default class MapScene extends Phaser.Scene {
     private topBar!: TopBar;
@@ -39,7 +40,7 @@ export default class MapScene extends Phaser.Scene {
             onDeckClick: () => new DeckModal(this, `마스터 덱 (총 ${GameState.masterDeck.length}장)`, GameState.masterDeck),
             onSettingsClick: () => new SettingsModal(this)
         });
-        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor });
+        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor, gold: GameState.player.gold });
         this.topBar.setScrollFactor(0); 
 
         this.mapContainer = this.add.container(0, 0);
@@ -85,7 +86,7 @@ export default class MapScene extends Phaser.Scene {
         edgeGraphics.setDepth(1); 
         this.mapContainer.add(edgeGraphics);
 
-        const getPos = (node: any) => ({
+        const getPos = (node: IMapNode) => ({
             x: screenWidth * node.xRatio,
             y: startY - (node.floor * floorHeight)
         });
@@ -159,7 +160,7 @@ export default class MapScene extends Phaser.Scene {
         });
     }
 
-    private handleNodeClick(node: any) {
+    private handleNodeClick(node: IMapNode) {
         this.sound.play('click');
         
         if (GameState.currentNodeId && !GameState.visitedNodeIds.includes(GameState.currentNodeId)) {
@@ -171,15 +172,38 @@ export default class MapScene extends Phaser.Scene {
         const nextEdges = GameState.currentMap!.edges.filter(e => e.from === node.id);
         GameState.playableNodeIds = nextEdges.map(e => e.to);
 
-        // 💡 팩토리 연동: 전투 노드 진입 시 적을 생성하여 GameState에 주입!
-        if (node.type === 'BATTLE' || node.type === 'ELITE' || node.type === 'BOSS') {
-            GameState.enemy = EnemyFactory.generateBattleEnemy({
-                floor: GameState.floor,
-                type: node.type
-            });
-            this.scene.start('BattleScene');
-        } else {
-            this.scene.restart(); 
+        switch (node.type) {
+            // 💡 팩토리 연동: 전투 노드 진입 시 적을 생성하여 GameState에 주입!
+            case 'BATTLE':
+            case 'ELITE':
+            case 'BOSS':
+                GameState.enemy = EnemyFactory.generateBattleEnemy({
+                    floor: GameState.floor,
+                    type: node.type
+                });
+                this.scene.start('BattleScene');
+                break;
+
+            case 'REST':
+                this.scene.start('RestScene');
+                break;
+
+            case 'TREASURE':
+                this.scene.start('TreasureScene');
+                break;
+
+            case 'EVENT':
+                this.scene.start('EventScene');
+                break;
+
+            case 'SHOP':
+                this.scene.start('ShopScene');
+                break;
+
+            // START 등 별도 화면이 없는 노드는 맵에 머무른다
+            default:
+                this.scene.restart();
+                break;
         }
     }
 }

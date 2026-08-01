@@ -1,8 +1,9 @@
 // src/core/GameState.ts
 import type { ICharacter, ICardData, IMapData } from '../types';
 
-// 💡 플레이어에게 쥐어줄 기본 시작 덱을 생성하는 함수 추가
-const getStartingDeck = (): ICardData[] => {
+// 💡 기본 시작 덱의 단일 정의(Single Source of Truth).
+// 호출할 때마다 새 객체를 만들어 반환해야 카드별 강화가 서로 간섭하지 않는다.
+export const getStartingDeck = (): ICardData[] => {
     return [
         { id: 'strike_1', name: '타격', cost: 1, desc: '피해를 6 줍니다.', type: 'ATTACK', damage: 6 },
         { id: 'strike_2', name: '타격', cost: 1, desc: '피해를 6 줍니다.', type: 'ATTACK', damage: 6 },

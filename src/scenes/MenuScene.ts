@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SaveSystem } from '../systems/SaveSystem';
 import { Button } from '../ui/Button';
-import { GameState } from '../core/GameState'; 
+import { GameState, getStartingDeck } from '../core/GameState';
 import { SettingsModal } from '../ui/modals/SettingsModal'; // 💡 분리된 모달 임포트
 
 export default class MenuScene extends Phaser.Scene {
@@ -62,15 +62,8 @@ export default class MenuScene extends Phaser.Scene {
         GameState.currentNodeId = null;
         GameState.visitedNodeIds = [];
         GameState.playableNodeIds = [];
-        GameState.masterDeck = [
-            { id: `strike_${Date.now()}_1`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
-            { id: `strike_${Date.now()}_2`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
-            { id: `strike_${Date.now()}_3`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
-            { id: `strike_${Date.now()}_4`, name: '타격', type: 'ATTACK', cost: 1, desc: '적에게 6의 피해를 줍니다.', damage: 6, value: 6 },
-            { id: `defend_${Date.now()}_1`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
-            { id: `defend_${Date.now()}_2`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
-            { id: `defend_${Date.now()}_3`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 },
-            { id: `defend_${Date.now()}_4`, name: '수비', type: 'SKILL', cost: 1, desc: '방어도를 5 얻습니다.', block: 5, value: 5 }
-        ];
+        GameState.player.gold = 0;
+        // 💡 시작 덱 정의는 GameState.getStartingDeck() 한 곳에서만 관리한다.
+        GameState.masterDeck = getStartingDeck();
     }
 }
