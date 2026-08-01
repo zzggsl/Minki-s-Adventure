@@ -466,7 +466,7 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     updateUI() {
-        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor || 1 });
+        this.topBar.refresh({ hp: GameState.player.hp, maxHp: GameState.player.maxHp, floor: GameState.floor || 1, gold: GameState.player.gold });
         this.drawPileBtn.setText(`덱: ${GameState.deck?.length || 0}장`);
         this.discardPileBtn.setText(`버림: ${GameState.discard?.length || 0}장`);
 

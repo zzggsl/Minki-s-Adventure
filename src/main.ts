@@ -4,6 +4,10 @@ import MenuScene from './scenes/MenuScene';
 import MapScene from './scenes/MapScene';
 import BattleScene from './scenes/BattleScene';
 import RewardScene from './scenes/RewardScene';
+import RestScene from './scenes/RestScene';
+import TreasureScene from './scenes/TreasureScene';
+import EventScene from './scenes/EventScene';
+import ShopScene from './scenes/ShopScene';
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
@@ -20,7 +24,7 @@ const config: Phaser.Types.Core.GameConfig = {
             debug: false
         }
     },
-    scene: [PreloadScene, MenuScene, MapScene, BattleScene, RewardScene]
+    scene: [PreloadScene, MenuScene, MapScene, BattleScene, RewardScene, RestScene, TreasureScene, EventScene, ShopScene]
 };
 
 export default new Phaser.Game(config);
