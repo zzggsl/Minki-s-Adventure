@@ -1,5 +1,6 @@
 // src/scenes/PreloadScene.ts
 import Phaser from 'phaser';
+import { waitForFonts } from '../ui/theme';
 
 export default class PreloadScene extends Phaser.Scene {
     constructor() {
@@ -52,14 +53,6 @@ export default class PreloadScene extends Phaser.Scene {
         this.load.audio('shieldappear', 'shieldappear.mp3');
         this.load.audio('shieldblock', 'shieldblock.wav');
 
-        // 에셋 로드 씬의 preload() 내부
-        this.load.image('node_battle', 'assets/battle.png');
-        this.load.image('node_elite', 'assets/elite.png');
-        this.load.image('node_event', 'assets/event.png');
-        this.load.image('node_shop', 'assets/shop.png');
-        this.load.image('node_rest', 'assets/rest.png');
-        this.load.image('node_treasure', 'assets/treasure.png');
-        
         // shuffle 1~7 연속 로드
         for (let i = 1; i <= 7; i++) {
             this.load.audio(`shuffle${i}`, `shuffle${i}.m4a`);
@@ -67,7 +60,8 @@ export default class PreloadScene extends Phaser.Scene {
     }
 
     create() {
-        // 모든 에셋 로드가 끝나면 메인 메뉴로 안전하게 이동
-        this.scene.start('MenuScene');
+        // 💡 폰트는 Phaser 로더가 아닌 브라우저가 받으므로 별도로 기다린다.
+        // 로드 전에 씬이 시작되면 텍스트가 기본 글꼴로 그려진 채 갱신되지 않는다.
+        waitForFonts().then(() => this.scene.start('MenuScene'));
     }
 }

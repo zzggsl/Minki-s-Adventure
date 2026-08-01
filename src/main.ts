@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import './fonts.css';
+import { registerDefaultFont } from './ui/theme';
 import PreloadScene from './scenes/PreloadScene';
 import MenuScene from './scenes/MenuScene';
 import MapScene from './scenes/MapScene';
@@ -26,5 +28,8 @@ const config: Phaser.Types.Core.GameConfig = {
     },
     scene: [PreloadScene, MenuScene, MapScene, BattleScene, RewardScene, RestScene, TreasureScene, EventScene, ShopScene]
 };
+
+// 💡 게임 생성 전에 실행해야 모든 텍스트가 기본 폰트로 만들어진다.
+registerDefaultFont();
 
 export default new Phaser.Game(config);

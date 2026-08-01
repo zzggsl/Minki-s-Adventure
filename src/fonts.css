@@ -1,0 +1,20 @@
+/* src/fonts.css
+ * 갈무리(Galmuri) 픽셀 폰트. OFL-1.1 라이선스, npm 패키지(galmuri)에서 self-host 한다.
+ * Bold를 제공하는 패밀리가 Galmuri11뿐이라 이 패밀리만 사용한다.
+ */
+
+@font-face {
+    font-family: 'Galmuri11';
+    font-weight: 400;
+    font-style: normal;
+    font-display: block; /* 폰트가 준비되기 전에 기본 글꼴로 그려지는 것을 막는다 */
+    src: url('galmuri/dist/Galmuri11.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Galmuri11';
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+    src: url('galmuri/dist/Galmuri11-Bold.woff2') format('woff2');
+}
