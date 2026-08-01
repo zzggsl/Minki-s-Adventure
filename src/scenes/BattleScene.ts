@@ -11,6 +11,7 @@ import { SettingsManager } from '../managers/SettingsManager';
 import { KEYWORD_DICT } from '../data/keywords'; 
 import { DeckModal } from '../ui/modals/DeckModal'; 
 import { SettingsModal } from '../ui/modals/SettingsModal'; 
+import { CardView } from '../ui/CardView';
 import type { ICardData } from '../types';
 
 interface ICardStartPos { x: number; y: number; angle: number; }
@@ -39,9 +40,9 @@ export default class BattleScene extends Phaser.Scene {
     enemyIntentIcon!: Phaser.GameObjects.Sprite; 
     
     turnText!: Phaser.GameObjects.Text;
-    cardContainers: Phaser.GameObjects.Container[] = [];
+    cardContainers: CardView[] = [];
 
-    private selectedCard: { container: Phaser.GameObjects.Container, data: ICardData, index: number, startPos: ICardStartPos } | null = null;
+    private selectedCard: { container: CardView, data: ICardData, index: number, startPos: ICardStartPos } | null = null;
 
     constructor() {
         super({ key: 'BattleScene' });
@@ -84,7 +85,7 @@ export default class BattleScene extends Phaser.Scene {
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
             if (GameState.turn !== 'player' || !SettingsManager.isMobileUI(this)) return;
 
-            const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as Phaser.GameObjects.Container));
+            const clickedCard = currentlyOver.find(obj => this.cardContainers.includes(obj as CardView));
             
             if (!clickedCard && this.selectedCard) {
                 if (pointer.y < height * 0.6) {
@@ -186,22 +187,11 @@ export default class BattleScene extends Phaser.Scene {
     }
 
     createCardView(x: number, y: number, angle: number, cardData: ICardData, handIndex: number, animate: boolean, delayIndex: number) {
-        const cardWidth = 260;
-        const cardHeight = 380;
         const width = this.cameras.main.width;
         const height = this.cameras.main.height;
-        
-        const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0xe0e0e0);
-        bg.setStrokeStyle(6, 0xffffff);
-        
-        const nameText = this.add.text(0, -130, cardData.name, { fontSize: '38px', color: '#000', fontStyle: 'bold', padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
-        const costBg = this.add.sprite(-90, -145, 'energy').setScale(0.7);
-        const costText = this.add.text(-90, -145, cardData.cost.toString(), { fontSize: '40px', color: '#fff', fontStyle: 'bold', stroke: '#000000', strokeThickness: 8, padding: { top: 15, bottom: 15, left: 10, right: 10 } }).setOrigin(0.5);
-        const descText = this.add.text(0, 20, cardData.desc, { fontSize: '28px', color: '#333', align: 'center', wordWrap: { width: 220 }, padding: { top: 15, bottom: 15 } }).setOrigin(0.5);
 
-        const cardContainer = this.add.container(x, y, [bg, nameText, costBg, costText, descText]);
-        cardContainer.setSize(cardWidth, cardHeight);
-        cardContainer.setAngle(angle); 
+        const cardContainer = new CardView({ scene: this, x, y, card: cardData });
+        cardContainer.setAngle(angle);
         
         if (animate) {
             cardContainer.setPosition(width * 0.12, height * 0.9);
@@ -231,7 +221,7 @@ export default class BattleScene extends Phaser.Scene {
         cardContainer.on('pointerover', () => {
             if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
             this.children.bringToTop(cardContainer);
-            bg.setStrokeStyle(8, 0xffff00);
+            cardContainer.setHighlight(true);
             this.sound.play('click'); 
             this.tweens.add({ targets: cardContainer, y: y - 100, scale: 1.2, angle: 0, duration: 100 });
             this.showCardTooltip(cardContainer, cardData);
@@ -240,7 +230,7 @@ export default class BattleScene extends Phaser.Scene {
         // 💡 3. 마우스 아웃 (PC 환경 전용)
         cardContainer.on('pointerout', () => {
             if (GameState.turn !== 'player' || SettingsManager.isMobileUI(this)) return; 
-            bg.setStrokeStyle(6, 0xffffff);
+            cardContainer.setHighlight(false);
             this.tweens.add({ targets: cardContainer, y: startPos.y, scale: 1, angle: startPos.angle, duration: 100 });
             this.tooltip.hide();
         });
@@ -285,7 +275,7 @@ export default class BattleScene extends Phaser.Scene {
             // 원래 덱으로 넣지 말고 '선택된 팝업 상태'를 유지시킴!
             if (SettingsManager.isMobileUI(this) && this.selectedCard?.container === cardContainer) {
                 if (cardContainer.y < height * 0.6) {
-                    bg.setStrokeStyle(6, 0xffffff);
+                    cardContainer.setHighlight(false);
                     this.playCard(cardData, handIndex, cardContainer); 
                     this.selectedCard = null; 
                     this.tooltip.hide();
@@ -298,7 +288,7 @@ export default class BattleScene extends Phaser.Scene {
             }
 
             // PC 드래그 종료 로직
-            bg.setStrokeStyle(6, 0xffffff);
+            cardContainer.setHighlight(false);
 
             if (cardContainer.y < height * 0.6) {
                 this.playCard(cardData, handIndex, cardContainer); 
@@ -313,7 +303,7 @@ export default class BattleScene extends Phaser.Scene {
         this.cardContainers.push(cardContainer);
     }
 
-    private selectCard(container: Phaser.GameObjects.Container, cardData: ICardData, index: number, startPos: ICardStartPos) {
+    private selectCard(container: CardView, cardData: ICardData, index: number, startPos: ICardStartPos) {
         // 💡 자기 자신이 아닌 '다른 카드'가 켜져 있을 때만 기존 카드를 집어넣음
         if (this.selectedCard && this.selectedCard.container !== container) {
             this.deselectCard(true); 
@@ -323,9 +313,8 @@ export default class BattleScene extends Phaser.Scene {
         this.children.bringToTop(container);
         this.sound.play('click');
         
-        const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
-        bg.setStrokeStyle(8, 0xffff00);
-        
+        container.setHighlight(true);
+
         // 💡 카드가 똑바로 서면서 위로 튀어나오게(y - 150) 연출
         this.tweens.add({ targets: container, y: startPos.y - 150, scale: 1.2, angle: 0, duration: 150 });
         this.showCardTooltip(container, cardData);
@@ -335,8 +324,7 @@ export default class BattleScene extends Phaser.Scene {
         if (!this.selectedCard) return;
         
         const { container, startPos } = this.selectedCard;
-        const bg = container.getAt(0) as Phaser.GameObjects.Rectangle;
-        bg.setStrokeStyle(6, 0xffffff);
+        container.setHighlight(false);
         
         if (animateBack) {
             this.tweens.add({ targets: container, x: startPos.x, y: startPos.y, scale: 1, angle: startPos.angle, duration: 150 });
@@ -371,7 +359,7 @@ export default class BattleScene extends Phaser.Scene {
         this.tweens.add({ targets: container, y: container.y - 300, delay: delay, duration: 250, ease: 'Quad.easeOut', onComplete: () => { this.tweens.add({ targets: container, y: discardY, duration: 250, ease: 'Quad.easeIn' }); } });
     }
 
-    playCard(cardData: ICardData, handIndex: number, cardContainer: Phaser.GameObjects.Container) {
+    playCard(cardData: ICardData, handIndex: number, cardContainer: CardView) {
         this.cardContainers = this.cardContainers.filter(c => c !== cardContainer);
         const result = BattleManager.playCard(cardData, handIndex);
 

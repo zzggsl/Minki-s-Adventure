@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 import { GameState } from '../core/GameState';
 import { getRandomRewardCards } from '../data/cards'; // 💡 새로 만든 카드 뽑기 함수
+import { CardView } from '../ui/CardView';
 
 export default class RewardScene extends Phaser.Scene {
     constructor() {
@@ -91,46 +92,28 @@ export default class RewardScene extends Phaser.Scene {
         rewardOptions.forEach((cardData, index) => {
             const x = startX + (index * cardSpacing);
             const y = height / 2 + 50;
-            const cardWidth = 260;
-            const cardHeight = 380;
 
-            const bg = this.add.rectangle(0, 0, cardWidth, cardHeight, 0x222222);
-            bg.setStrokeStyle(6, 0xffffff);
+            const cardView = new CardView({ scene: this, x, y, card: cardData });
+            cardView.setInteractive();
 
-            const nameText = this.add.text(0, -130, cardData.name, { 
-                fontSize: '36px', color: '#000', fontStyle: 'bold', backgroundColor: '#fff', padding: { top: 8, bottom: 8, left: 10, right: 10 } 
-            }).setOrigin(0.5);
-
-            const costText = this.add.text(-90, -145, cardData.cost.toString(), { 
-                fontSize: '32px', color: '#fff', backgroundColor: '#000', padding: { top: 10, bottom: 10, left: 14, right: 14 } 
-            }).setOrigin(0.5);
-
-            const descText = this.add.text(0, 20, cardData.desc, { 
-                fontSize: '24px', color: '#fff', align: 'center', wordWrap: { width: 220 }, padding: { top: 8, bottom: 8 } 
-            }).setOrigin(0.5);
-
-            const cardContainer = this.add.container(x, y, [bg, nameText, costText, descText]);
-            cardContainer.setSize(cardWidth, cardHeight);
-            cardContainer.setInteractive();
-
-            // 개발자님의 기존 디자인 - 마우스 오버(터치) 시 카드 강조 연출
-            cardContainer.on('pointerover', () => {
-                bg.setStrokeStyle(8, 0xffff00);
-                this.tweens.add({ targets: cardContainer, y: y - 20, duration: 100 });
+            // 마우스 오버(터치) 시 카드 강조 연출
+            cardView.on('pointerover', () => {
+                cardView.setHighlight(true);
+                this.tweens.add({ targets: cardView, y: y - 20, duration: 100 });
             });
-            cardContainer.on('pointerout', () => {
-                bg.setStrokeStyle(6, 0xffffff);
-                this.tweens.add({ targets: cardContainer, y: y, duration: 100 });
+            cardView.on('pointerout', () => {
+                cardView.setHighlight(false);
+                this.tweens.add({ targets: cardView, y: y, duration: 100 });
             });
 
             // 카드 클릭 시 덱에 추가하고 맵으로 복귀
-            cardContainer.on('pointerdown', () => {
+            cardView.on('pointerdown', () => {
                 this.sound.play('click');
                 GameState.masterDeck.push(cardData);
                 this.scene.start('MapScene');
             });
 
-            cardSelectionContainer.add(cardContainer);
+            cardSelectionContainer.add(cardView);
         });
 
         // 카드 선택 스킵 (다시 보상 목록으로 돌아가기)

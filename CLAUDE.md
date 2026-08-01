@@ -33,7 +33,15 @@ npm run preview    # 빌드 결과 미리보기
   - `EnemyFactory` — `data/enemies.ts` 풀에서 몬스터 스폰
   - `SettingsManager` — 볼륨/애니메이션 속도/PC·모바일 UI 강제 전환 (localStorage `minki_settings`)
 - **`EventBus`**(`src/core/EventBus.ts`) — Phaser `EventEmitter` 기반. 시스템과 UI 컴포넌트 간 느슨한 결합에 사용.
-- **UI 컴포넌트**(`src/ui/`, `src/ui/modals/`) — `Button`, `Modal`, `Tooltip`, `TopBar` 등은 상태를 소유하지 않고(stateless), 외부에서 `refresh(data)`로 전달받은 데이터만 표시한다. `GameState`를 직접 수정하지 않고, 사용자 입력을 Manager/System에 위임한다.
+- **UI 컴포넌트**(`src/ui/`, `src/ui/modals/`) — `Button`, `Modal`, `Tooltip`, `TopBar`, `CardView` 등은 상태를 소유하지 않고(stateless), 외부에서 `refresh(data)`로 전달받은 데이터만 표시한다. `GameState`를 직접 수정하지 않고, 사용자 입력을 Manager/System에 위임한다.
+  - `CardView`(`src/ui/CardView.ts`) — 카드 한 장의 외형을 담당하는 **유일한** 구현. 전투/보상/덱 모달이 모두 이걸 쓴다. 카드 비주얼을 바꿀 일이 있으면 여기만 고친다.
+
+### 폰트 (`src/ui/theme.ts`)
+- 게임 폰트는 갈무리(`Galmuri11`, OFL-1.1). npm 패키지 `galmuri`에서 self-host 하며 `src/fonts.css`가 `@font-face`를 선언한다.
+- ⚠️ `registerDefaultFont()`가 **Phaser의 `add.text` 팩토리를 프로토타입 수준에서 교체**해 모든 텍스트에 기본 폰트를 주입한다. 따라서 각 `add.text` 호출에 `fontFamily`를 적지 않아도 된다(적으면 그 값이 우선). `main.ts`에서 `new Phaser.Game()` **이전에** 호출해야 한다.
+- `Phaser.GameObjects.GameObjectFactory.register()`는 이미 등록된 타입을 덮어쓰지 않으므로(내부 `hasOwnProperty` 검사) 반드시 프로토타입에 직접 할당해야 한다.
+- 폰트는 Phaser 로더가 아닌 브라우저가 받으므로 `PreloadScene`이 `waitForFonts()`로 로드 완료를 기다린 뒤 `MenuScene`을 시작한다.
+- 픽셀 폰트라 **11px 배수(22/33/44/55…)에서 가장 또렷**하다. 새 텍스트 크기는 되도록 배수로 맞춘다.
 
 ### 데이터 (`src/data/`)
 - `cards.ts` — `CARD_DB`(카드 풀), `getRandomRewardCards()`
